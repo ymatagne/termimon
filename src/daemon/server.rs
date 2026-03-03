@@ -11,6 +11,8 @@ use tokio::sync::watch;
 
 use std::sync::{Arc, Mutex};
 use crate::agents::TrackedAgent;
+use crate::agents::activity::ActivityEvent;
+use crate::agents::cost::AgentCostSummary;
 
 /// Serializable snapshot of a tracked agent for IPC.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -79,6 +81,10 @@ pub struct StatusResponse {
     pub heartbeat_count: u64,
     pub agents: Vec<AgentSnapshot>,
     pub total_xp: u64,
+    #[serde(default)]
+    pub costs: Vec<AgentCostSummary>,
+    #[serde(default)]
+    pub recent_activity: Vec<ActivityEvent>,
 }
 
 /// Shared daemon state exposed to IPC clients.
@@ -87,6 +93,8 @@ pub struct DaemonState {
     pub agents: Vec<AgentSnapshot>,
     pub started_at: Option<String>,
     pub heartbeat_count: u64,
+    pub costs: Vec<AgentCostSummary>,
+    pub recent_activity: Vec<ActivityEvent>,
 }
 
 pub type SharedState = Arc<Mutex<DaemonState>>;
@@ -96,6 +104,8 @@ pub fn new_shared_state() -> SharedState {
         agents: Vec::new(),
         started_at: Some(chrono::Utc::now().to_rfc3339()),
         heartbeat_count: 0,
+        costs: Vec::new(),
+        recent_activity: Vec::new(),
     }))
 }
 
@@ -161,8 +171,18 @@ async fn handle_client(stream: tokio::net::UnixStream, state: SharedState) -> Re
                 heartbeat_count: st.heartbeat_count,
                 agents: st.agents.clone(),
                 total_xp: st.agents.iter().map(|a| a.xp).sum(),
+                costs: st.costs.clone(),
+                recent_activity: st.recent_activity.clone(),
             };
             serde_json::to_string(&resp)?
+        }
+        "costs" => {
+            let st = state.lock().map_err(|e| anyhow::anyhow!("lock: {e}"))?;
+            serde_json::to_string_pretty(&st.costs)?
+        }
+        "activity" => {
+            let st = state.lock().map_err(|e| anyhow::anyhow!("lock: {e}"))?;
+            serde_json::to_string_pretty(&st.recent_activity)?
         }
         "agents" => {
             let st = state.lock().map_err(|e| anyhow::anyhow!("lock: {e}"))?;

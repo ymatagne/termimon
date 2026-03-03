@@ -6,6 +6,8 @@ use tokio::sync::watch;
 use std::collections::HashMap;
 
 use crate::agents::{AgentKind, AgentState, DetectorRegistry, TrackedAgent};
+use crate::agents::activity::ActivityFeed;
+use crate::agents::cost::AgentCostTracker;
 use crate::agents::detector;
 use crate::agents::identity;
 use crate::config;
@@ -26,6 +28,13 @@ pub async fn run_heartbeat(mut shutdown: watch::Receiver<bool>) {
     let mut tracked: HashMap<String, TrackedAgent> = HashMap::new();
     let mut cycle: u64 = 0;
 
+    // Intelligence layer: cost tracking & activity feed
+    let mut cost_tracker = AgentCostTracker::new();
+    let mut activity_feed = ActivityFeed::new();
+    /// How often (in heartbeat cycles) to run the heavier transcript scan.
+    /// With 2s heartbeats, 15 cycles ≈ every 30 seconds.
+    const SCAN_INTERVAL: u64 = 15;
+
     tracing::info!("Heartbeat starting ({}ms interval)", HEARTBEAT_INTERVAL_MS);
 
     loop {
@@ -33,13 +42,24 @@ pub async fn run_heartbeat(mut shutdown: watch::Receiver<bool>) {
             break;
         }
 
-        if let Err(e) = tick(&registry, &config, &mut tracked) {
+        if let Err(e) = tick(&registry, &config, &mut tracked, cycle) {
             tracing::warn!("Heartbeat error: {e:#}");
             if cycle <= 3 {
                 eprintln!("TermiMon heartbeat error: {e:#}");
             }
         }
         cycle += 1;
+
+        // Periodically scan transcripts for cost & activity data
+        if cycle % SCAN_INTERVAL == 1 {
+            cost_tracker.scan_all_transcripts();
+            activity_feed.scan_transcripts();
+
+            // Persist daily stats (best-effort)
+            if let Err(e) = crate::stats::update_from_costs(&cost_tracker, "claude") {
+                tracing::debug!("Failed to persist daily stats: {e}");
+            }
+        }
 
         // Push state to IPC
         if let Some(state) = super::server::get_global_state() {
@@ -49,6 +69,8 @@ pub async fn run_heartbeat(mut shutdown: watch::Receiver<bool>) {
                     .values()
                     .map(super::server::AgentSnapshot::from)
                     .collect();
+                st.costs = cost_tracker.summary();
+                st.recent_activity = activity_feed.recent(20);
             }
         }
 
@@ -68,6 +90,7 @@ fn tick(
     registry: &DetectorRegistry,
     config: &config::Config,
     tracked: &mut HashMap<String, TrackedAgent>,
+    cycle: u64,
 ) -> anyhow::Result<()> {
     let procs = detector::list_processes()?;
     let mut seen: Vec<String> = Vec::new();
@@ -247,7 +270,7 @@ fn tick(
     }
 
     // Update status bar
-    update_status(tracked, config)?;
+    update_status(tracked, config, cycle)?;
 
     Ok(())
 }
@@ -255,32 +278,28 @@ fn tick(
 fn update_status(
     tracked: &HashMap<String, TrackedAgent>,
     config: &config::Config,
+    cycle: u64,
 ) -> anyhow::Result<()> {
     if tracked.is_empty() {
         status::update_status_right_with_time("🎮")?;
         return Ok(());
     }
 
-    let entries: Vec<status::StatusEntry> = tracked
+    // Build agent snapshots for the animated status bar
+    let snapshots: Vec<super::server::AgentSnapshot> = tracked
         .values()
         .filter(|a| a.state != AgentState::Unknown)
-        .map(|a| {
-            let anim = a.state.to_anim_state();
-            status::StatusEntry {
-                icon: agent_icon(a.kind),
-                name: a.kind.to_string(),
-                state: a.state.to_string(),
-                state_emoji: anim.emoji().to_string(),
-            }
-        })
+        .map(super::server::AgentSnapshot::from)
         .collect();
 
-    let formatted = status::format_status_bar(
-        &entries,
-        &config.statusbar.format,
-        config.statusbar.max_creatures,
-    );
-    status::update_status_right_with_time(&formatted)?;
+    if snapshots.is_empty() {
+        status::update_status_right_with_time("🎮")?;
+        return Ok(());
+    }
+
+    // Use animated status bar with cycle as tick counter
+    let animated = crate::ui::dashboard::format_status_bar_animated(&snapshots, cycle);
+    status::update_status_right_with_time(&animated)?;
     Ok(())
 }
 

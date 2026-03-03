@@ -9,6 +9,7 @@ mod creatures;
 mod daemon;
 mod render;
 mod state;
+mod stats;
 mod tmux;
 mod ui;
 
@@ -69,6 +70,12 @@ enum Commands {
         #[arg(short, long)]
         path: Option<PathBuf>,
     },
+
+    /// Switch to an agent's tmux pane
+    Switch {
+        /// Agent number (1-based). If omitted, shows interactive list.
+        number: Option<usize>,
+    },
 }
 
 #[tokio::main]
@@ -104,6 +111,9 @@ async fn main() -> anyhow::Result<()> {
         }
         Commands::Config { edit, path } => {
             config::handle_config(edit, path).await?;
+        }
+        Commands::Switch { number } => {
+            ui::dashboard::switch_command(number).await?;
         }
     }
 
