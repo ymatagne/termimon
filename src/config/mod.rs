@@ -19,6 +19,8 @@ pub struct Config {
     pub agents: AgentConfig,
     #[serde(default)]
     pub notifications: NotificationConfig,
+    #[serde(default)]
+    pub team: TeamConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -91,6 +93,33 @@ pub struct NotificationConfig {
     pub cost_alert_threshold_cents: u64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TeamConfig {
+    #[serde(default = "default_team_name")]
+    pub name: String,
+    #[serde(default = "default_team_port")]
+    pub port: u16,
+    #[serde(default)]
+    pub auto_host: bool,
+}
+
+impl Default for TeamConfig {
+    fn default() -> Self {
+        Self {
+            name: default_team_name(),
+            port: default_team_port(),
+            auto_host: false,
+        }
+    }
+}
+
+fn default_team_name() -> String {
+    std::env::var("USER")
+        .or_else(|_| std::env::var("USERNAME"))
+        .unwrap_or_else(|_| "trainer".into())
+}
+fn default_team_port() -> u16 { 4662 }
+
 fn default_cost_alert_threshold() -> u64 { 1000 } // $10
 
 // Default value functions
@@ -115,6 +144,7 @@ impl Default for Config {
             creatures: CreatureConfig::default(),
             agents: AgentConfig::default(),
             notifications: NotificationConfig::default(),
+            team: TeamConfig::default(),
         }
     }
 }

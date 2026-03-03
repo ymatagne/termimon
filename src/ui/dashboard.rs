@@ -81,6 +81,12 @@ struct DashApp {
     filter: Option<String>,
     /// Whether we're in filter input mode.
     filter_input: bool,
+    /// Whether team view is active.
+    show_team: bool,
+    /// Selected peer index in team view.
+    team_selected_peer: usize,
+    /// Selected creature index within peer.
+    team_selected_creature: usize,
 }
 
 impl DashApp {
@@ -98,6 +104,9 @@ impl DashApp {
             show_help: false,
             filter: None,
             filter_input: false,
+            show_team: false,
+            team_selected_peer: 0,
+            team_selected_creature: 0,
         }
     }
 
@@ -298,6 +307,27 @@ pub async fn run() -> Result<()> {
                                 app.filter_input = true;
                                 app.filter = Some(String::new());
                             }
+                            KeyCode::Char('t') => {
+                                app.show_team = !app.show_team;
+                                app.flash_msg = Some((
+                                    if app.show_team { "Team view ON".to_string() } else { "Team view OFF".to_string() },
+                                    Instant::now(),
+                                ));
+                            }
+                            KeyCode::Char('b') => {
+                                // Challenge selected peer's creature to battle
+                                if app.show_team {
+                                    app.flash_msg = Some((
+                                        "⚔️ Battle challenge sent! (requires connected peers)".to_string(),
+                                        Instant::now(),
+                                    ));
+                                } else {
+                                    app.flash_msg = Some((
+                                        "Press 't' first to open team view, then 'b' to battle".to_string(),
+                                        Instant::now(),
+                                    ));
+                                }
+                            }
                             KeyCode::Char('d') => {
                                 // Kill selected agent's process
                                 if let Some(agent) = app.selected_agent() {
@@ -400,6 +430,37 @@ fn draw_dashboard(frame: &mut Frame, app: &DashApp) {
     draw_body(frame, chunks[1], app);
     draw_footer(frame, chunks[2], app);
 
+    // Team view overlay
+    if app.show_team {
+        // Draw team view in the body area
+        let team_area = Rect::new(
+            area.x + 2,
+            area.y + 3,
+            area.width.saturating_sub(4),
+            area.height.saturating_sub(6),
+        );
+        frame.render_widget(Clear, team_area);
+        if let Some(ts) = crate::team::get_global_team_state() {
+            crate::ui::team_view::draw_team_view(frame, team_area, &ts, app.team_selected_peer, app.team_selected_creature);
+        } else {
+            // No team state — show placeholder
+            let placeholder = Paragraph::new(vec![
+                Line::from(""),
+                Line::from(Span::styled("  ⚔️ Team Mode", Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD))),
+                Line::from(""),
+                Line::from(Span::styled("  Not connected to any team.", Style::default().fg(Color::DarkGray))),
+                Line::from(""),
+                Line::from(Span::styled("  Host:  termimon team host", Style::default().fg(Color::Yellow))),
+                Line::from(Span::styled("  Join:  termimon team join <ip:port>", Style::default().fg(Color::Yellow))),
+            ])
+            .block(Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::Magenta))
+                .title(" ⚔️ TEAM MODE "));
+            frame.render_widget(placeholder, team_area);
+        }
+    }
+
     // Help overlay
     if app.show_help {
         draw_help_overlay(frame, area);
@@ -417,6 +478,8 @@ fn draw_help_overlay(frame: &mut Frame, area: Rect) {
         Line::from(vec![Span::styled("  s      ", Style::default().fg(Color::Yellow)), Span::raw("Cycle sort mode (name/CPU/cost/XP)")]),
         Line::from(vec![Span::styled("  d      ", Style::default().fg(Color::Yellow)), Span::raw("Kill selected agent (SIGTERM)")]),
         Line::from(vec![Span::styled("  /      ", Style::default().fg(Color::Yellow)), Span::raw("Filter agents by name")]),
+        Line::from(vec![Span::styled("  t      ", Style::default().fg(Color::Yellow)), Span::raw("Toggle team view")]),
+        Line::from(vec![Span::styled("  b      ", Style::default().fg(Color::Yellow)), Span::raw("Challenge to battle (team view)")]),
         Line::from(vec![Span::styled("  ?      ", Style::default().fg(Color::Yellow)), Span::raw("Show this help")]),
         Line::from(""),
         Line::from(Span::styled("  Press any key to close", Style::default().fg(Color::DarkGray))),
@@ -992,6 +1055,10 @@ fn draw_footer(frame: &mut Frame, area: Rect, app: &DashApp) {
             Span::raw(" kill  "),
             Span::styled("/", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
             Span::raw(" filter  "),
+            Span::styled("t", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::raw(" team  "),
+            Span::styled("b", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::raw(" battle  "),
             Span::styled("?", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
             Span::raw(" help  "),
             Span::styled(format!("{sort_label}{filter_label}"), Style::default().fg(Color::DarkGray)),

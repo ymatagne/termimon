@@ -13,6 +13,7 @@ mod daemon;
 mod render;
 mod state;
 mod stats;
+mod team;
 #[allow(dead_code)]
 mod tmux;
 mod ui;
@@ -93,6 +94,34 @@ enum Commands {
         #[arg(short, long, default_value = "7")]
         days: u32,
     },
+
+    /// Team mode — connect with other TermiMon instances
+    Team {
+        #[command(subcommand)]
+        action: TeamAction,
+    },
+}
+
+#[derive(Subcommand)]
+enum TeamAction {
+    /// Host a team session (start listening for peers)
+    Host {
+        /// Port to listen on (default: from config or 4662)
+        #[arg(short, long)]
+        port: Option<u16>,
+    },
+
+    /// Join an existing team session
+    Join {
+        /// Host address (ip:port)
+        addr: String,
+    },
+
+    /// Show team connection status
+    Status,
+
+    /// Leave the current team session
+    Leave,
 }
 
 #[tokio::main]
@@ -140,6 +169,63 @@ async fn main() -> anyhow::Result<()> {
         }
         Commands::History { days } => {
             stats::show_history(days)?;
+        }
+        Commands::Team { action } => {
+            let cfg = config::load();
+            match action {
+                TeamAction::Host { port } => {
+                    let port = port.unwrap_or(cfg.team.port);
+                    let team_state = team::new_shared_team_state(cfg.team.name.clone());
+                    team::set_global_team_state(team_state.clone());
+                    let (_shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+                    println!("🎮 Hosting team session on port {port}...");
+                    println!("   Others can join with: termimon team join <your-ip>:{port}");
+                    team::server::run_team_server(port, team_state, shutdown_rx).await?;
+                }
+                TeamAction::Join { addr } => {
+                    let team_state = team::new_shared_team_state(cfg.team.name.clone());
+                    team::set_global_team_state(team_state.clone());
+                    let (_shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+                    println!("🎮 Joining team at {addr}...");
+                    team::client::connect_to_host(&addr, team_state, shutdown_rx).await?;
+                }
+                TeamAction::Status => {
+                    println!("🎮 Team Status");
+                    if let Some(ts) = team::get_global_team_state() {
+                        if let Ok(state) = ts.lock() {
+                            if state.hosting {
+                                println!("  Hosting on port {}", cfg.team.port);
+                            } else if state.connected {
+                                println!("  Connected to team");
+                            } else {
+                                println!("  Not connected");
+                            }
+                            let peers = state.registry.peer_names();
+                            if peers.is_empty() {
+                                println!("  No peers connected");
+                            } else {
+                                println!("  Peers: {}", peers.join(", "));
+                            }
+                        }
+                    } else {
+                        println!("  Not connected to any team.");
+                        println!("  Host:  termimon team host");
+                        println!("  Join:  termimon team join <ip:port>");
+                    }
+                }
+                TeamAction::Leave => {
+                    println!("👋 Leaving team...");
+                    // Signal shutdown to team connections
+                    if let Some(ts) = team::get_global_team_state() {
+                        if let Ok(mut state) = ts.lock() {
+                            state.connected = false;
+                            state.hosting = false;
+                            state.registry.peers.clear();
+                        }
+                    }
+                    println!("✅ Left team.");
+                }
+            }
         }
     }
 

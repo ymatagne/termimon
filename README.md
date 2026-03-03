@@ -9,7 +9,7 @@
 [![GitHub release](https://img.shields.io/github/v/release/ymatagne/termimon)](https://github.com/ymatagne/termimon/releases)
 ![macOS](https://img.shields.io/badge/macOS-supported-brightgreen)
 ![Linux](https://img.shields.io/badge/Linux-supported-brightgreen)
-[![v0.3.1](https://img.shields.io/badge/version-0.3.1-7c5cff)](https://github.com/ymatagne/termimon/releases/tag/v0.3.1)
+[![v0.4.0](https://img.shields.io/badge/version-0.4.0-7c5cff)](https://github.com/ymatagne/termimon/releases/tag/v0.4.0)
 
 <br>
 
@@ -181,6 +181,37 @@ cursor = "rustacean"
 copilot = "pythorn"
 ```
 
+## ⚔️ Team Mode (v0.4.0)
+
+Connect multiple TermiMon instances over the network! See each other's creatures, and battle them.
+
+```bash
+# Host a team session
+termimon team host              # listens on port 4662
+termimon team host --port 5000  # custom port
+
+# Join a team
+termimon team join 192.168.1.50:4662
+
+# Check status
+termimon team status
+
+# Leave
+termimon team leave
+```
+
+**In the dashboard**, press `t` to toggle the team view, and `b` to challenge a peer's creature to battle.
+
+**Battle system**: Stats are derived from real agent metrics — ATK from lines/dollar, DEF from build success rate, SPD from commits/hour, HP from XP. Element type advantages apply (🔥 > 🌿 > 💧 > 🔥).
+
+**Config** (`~/.termimon/config.toml`):
+```toml
+[team]
+name = "yan"       # your display name
+port = 4662        # hosting port
+auto_host = false  # auto-host on daemon start
+```
+
 ## 🗺️ Roadmap
 
 - [x] Core daemon + tmux agent detection
@@ -192,8 +223,8 @@ copilot = "pythorn"
 - [x] tmux status bar widget
 - [ ] Theme packs (retro, neon, pastel)
 - [ ] Sound effects (terminal bell patterns)
-- [ ] Creature battles (compare agent productivity)
-- [ ] Team mode (shared creature collection)
+- [x] Creature battles (compare agent productivity)
+- [x] Team mode (TCP-based peer networking)
 - [ ] Plugin system for custom agent detectors
 - [ ] Web dashboard export
 
