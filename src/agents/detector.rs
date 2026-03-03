@@ -50,6 +50,13 @@ pub fn list_processes() -> Result<Vec<ProcessInfo>> {
 
 /// Get the working directory of a process via `lsof`.
 pub fn get_working_dir(pid: u32) -> Option<String> {
+    // Strategy 1: Check process command line args for --project or working dir
+    // Claude Code often has the project path in its args
+    if let Some(dir) = get_working_dir_from_cmdline(pid) {
+        return Some(dir);
+    }
+
+    // Strategy 2: lsof (works for most processes, but Claude Code returns "/")
     let output = std::process::Command::new("lsof")
         .args(["-d", "cwd", "-p", &pid.to_string(), "-Fn"])
         .stdout(std::process::Stdio::piped())
@@ -60,7 +67,74 @@ pub fn get_working_dir(pid: u32) -> Option<String> {
     let stdout = String::from_utf8_lossy(&output.stdout);
     for line in stdout.lines() {
         if let Some(path) = line.strip_prefix('n') {
-            if path.starts_with('/') {
+            if path.starts_with('/') && path != "/" {
+                return Some(path.to_string());
+            }
+        }
+    }
+
+    // Strategy 3: Check parent process working dir
+    // Claude Code CLI is spawned from a shell — the parent shell's cwd is the project dir
+    if let Some(dir) = get_parent_working_dir(pid) {
+        if dir != "/" {
+            return Some(dir);
+        }
+    }
+
+    None
+}
+
+/// Try to get working dir from process command line (macOS: ps -o args)
+fn get_working_dir_from_cmdline(pid: u32) -> Option<String> {
+    let output = std::process::Command::new("ps")
+        .args(["-p", &pid.to_string(), "-o", "args="])
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .output()
+        .ok()?;
+
+    let args = String::from_utf8_lossy(&output.stdout).to_string();
+    // Look for --project flag or a directory path argument
+    let parts: Vec<&str> = args.split_whitespace().collect();
+    for (i, part) in parts.iter().enumerate() {
+        if *part == "--project" || *part == "-p" {
+            if let Some(dir) = parts.get(i + 1) {
+                if std::path::Path::new(dir).is_dir() {
+                    return Some(dir.to_string());
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Get the parent process's working directory
+fn get_parent_working_dir(pid: u32) -> Option<String> {
+    // Get parent PID
+    let output = std::process::Command::new("ps")
+        .args(["-p", &pid.to_string(), "-o", "ppid="])
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .output()
+        .ok()?;
+
+    let ppid: u32 = String::from_utf8_lossy(&output.stdout).trim().parse().ok()?;
+    if ppid <= 1 {
+        return None;
+    }
+
+    // Get parent's cwd via lsof
+    let output = std::process::Command::new("lsof")
+        .args(["-d", "cwd", "-p", &ppid.to_string(), "-Fn"])
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .output()
+        .ok()?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    for line in stdout.lines() {
+        if let Some(path) = line.strip_prefix('n') {
+            if path.starts_with('/') && path != "/" {
                 return Some(path.to_string());
             }
         }

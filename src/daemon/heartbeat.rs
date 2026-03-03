@@ -68,6 +68,9 @@ pub async fn run_heartbeat(mut shutdown: watch::Receiver<bool>) {
             if let Err(e) = crate::stats::update_from_costs(&cost_tracker, "claude") {
                 tracing::debug!("Failed to persist daily stats: {e}");
             }
+
+            // Award XP from recent activity events
+            award_xp_from_activity(&activity_feed, &tracked);
         }
 
         // Update productivity stats (every 30s like cost scanning)
@@ -345,3 +348,84 @@ fn update_status(
 }
 
 // agent_icon moved to ui::dashboard::status_bar_icon for animated display
+
+/// Award XP to creatures based on recent activity events.
+fn award_xp_from_activity(
+    feed: &ActivityFeed,
+    tracked: &HashMap<String, TrackedAgent>,
+) {
+    use crate::agents::activity::EventType;
+
+    // Get recent events (last 20)
+    let events = feed.recent(50);
+    if events.is_empty() {
+        return;
+    }
+
+    // Build a map of agent_name → agent_id for matching
+    let name_to_id: HashMap<String, String> = tracked
+        .values()
+        .filter(|a| !a.agent_id.is_empty())
+        .map(|a| (a.kind.to_string().to_lowercase(), a.agent_id.clone()))
+        .collect();
+
+    // XP rewards per event type
+    let mut xp_gains: HashMap<String, u64> = HashMap::new();
+
+    for event in &events {
+        let xp = match event.event_type {
+            EventType::FileWrite => 5,
+            EventType::FileRead => 1,
+            EventType::Command => 3,
+            EventType::Error => 0,
+            EventType::TokenUsage => 2,
+            EventType::Thinking => 1,
+            EventType::Responding => 1,
+            EventType::StateChange => 0,
+        };
+
+        if xp > 0 {
+            // Try to match event to an agent
+            let agent_name = event.agent_name.to_lowercase();
+            if let Some(agent_id) = name_to_id.get(&agent_name) {
+                *xp_gains.entry(agent_id.clone()).or_insert(0) += xp;
+            } else {
+                // Fallback: award to first matching agent kind
+                for (name, id) in &name_to_id {
+                    if agent_name.contains(name) {
+                        *xp_gains.entry(id.clone()).or_insert(0) += xp;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // Apply XP gains
+    for (agent_id, xp_gain) in &xp_gains {
+        let bindings = identity::load_bindings();
+        if let Some(binding) = bindings.get(agent_id) {
+            let new_xp = binding.xp + xp_gain;
+            let new_stage = if new_xp >= 500 {
+                3
+            } else if new_xp >= 100 {
+                2
+            } else {
+                1
+            };
+
+            if new_xp != binding.xp {
+                identity::update_xp(agent_id, new_xp, new_stage);
+                if new_stage > binding.stage {
+                    tracing::info!(
+                        agent_id = %agent_id,
+                        old_stage = binding.stage,
+                        new_stage = new_stage,
+                        xp = new_xp,
+                        "🎉 Creature evolved!"
+                    );
+                }
+            }
+        }
+    }
+}
