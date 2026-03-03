@@ -45,6 +45,48 @@ const CREATURES: &[CreatureDef] = &[
         default_agent: "unknown",
         evolution_names: ["Gitbat", "Commitwing", "Mergefiend"],
     },
+    CreatureDef {
+        name: "neuromorph",
+        element: Element::Psychic,
+        description: "A psychic brain creature born from GPT and OpenAI agent sessions.",
+        default_agent: "gpt",
+        evolution_names: ["Neuromorph", "Synaptrix", "Omnimind"],
+    },
+    CreatureDef {
+        name: "dockersaur",
+        element: Element::Steel,
+        description: "A metallic dinosaur that orchestrates containers with ruthless efficiency.",
+        default_agent: "docker",
+        evolution_names: ["Dockersaur", "Composaurus", "Kubernox"],
+    },
+    CreatureDef {
+        name: "termignite",
+        element: Element::Fire,
+        description: "A dark flame creature forged by terminal power users running vim and tmux.",
+        default_agent: "vim",
+        evolution_names: ["Termignite", "Blazeshell", "Infernotty"],
+    },
+    CreatureDef {
+        name: "pixelbyte",
+        element: Element::Digital,
+        description: "A glitchy digital creature that thrives in game development environments.",
+        default_agent: "gamedev",
+        evolution_names: ["Pixelbyte", "Voxelcore", "Renderex"],
+    },
+    CreatureDef {
+        name: "cloudwisp",
+        element: Element::Air,
+        description: "A floating cloud creature that drifts through deploy pipelines.",
+        default_agent: "railway",
+        evolution_names: ["Cloudwisp", "Stratolift", "Cumulonimbus"],
+    },
+    CreatureDef {
+        name: "dataslime",
+        element: Element::Poison,
+        description: "A green slime creature that oozes through databases and data pipelines.",
+        default_agent: "database",
+        evolution_names: ["Dataslime", "Queryblob", "Schemazoid"],
+    },
 ];
 
 pub fn get_creature_def(name: &str) -> Option<&'static CreatureDef> {

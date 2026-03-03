@@ -1,0 +1,49 @@
+name: 'TermiMon PR Comment'
+description: 'Posts a comment on PRs with TermiMon creature stats'
+inputs:
+  github-token:
+    description: 'GitHub token for posting comments'
+    required: true
+    default: ${{ github.token }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Get TermiMon stats and comment
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: |
+        # Try to get termimon status
+        CREATURE_NAME="TermiMon Creature"
+        STAGE="1"
+        XP="0"
+        FILES_CHANGED="0"
+
+        if command -v termimon &> /dev/null; then
+          STATUS=$(termimon status 2>/dev/null || echo "")
+          if [ -n "$STATUS" ]; then
+            CREATURE_NAME=$(echo "$STATUS" | grep -oP '(?<=\s)\w+(?=\s\(Stage)' | head -1 || echo "TermiMon Creature")
+            STAGE=$(echo "$STATUS" | grep -oP '(?<=Stage )\d' | head -1 || echo "1")
+            XP=$(echo "$STATUS" | grep -oP '(?<=XP: )\d+' | head -1 || echo "0")
+          fi
+        fi
+
+        # Count files changed in PR
+        FILES_CHANGED=$(git diff --name-only origin/main...HEAD 2>/dev/null | wc -l | tr -d ' ')
+        [ -z "$FILES_CHANGED" ] && FILES_CHANGED="0"
+
+        # Pick emoji based on stage
+        case "$STAGE" in
+          3) EMOJI="🔥" ;;
+          2) EMOJI="⚡" ;;
+          *) EMOJI="🌱" ;;
+        esac
+
+        # Post comment
+        COMMENT="$EMOJI **$CREATURE_NAME** (Stage $STAGE) helped build this PR — $XP XP earned, $FILES_CHANGED files changed
+
+        <sub>Posted by [TermiMon](https://github.com/ymatagne/termimon) — your AI agents deserve pets 🎮</sub>"
+
+        if [ -n "${{ github.event.pull_request.number }}" ]; then
+          gh pr comment "${{ github.event.pull_request.number }}" --body "$COMMENT"
+        fi

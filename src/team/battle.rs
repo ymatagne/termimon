@@ -113,6 +113,23 @@ fn type_multiplier(attacker: Element, defender: Element) -> f64 {
         // Fire vs Rust
         (Element::Fire, Element::Rust) => 2.0,
         (Element::Rust, Element::Fire) => 0.5,
+        // Psychic advantages
+        (Element::Psychic, Element::Poison) => 2.0,
+        (Element::Poison, Element::Psychic) => 0.5,
+        // Steel advantages
+        (Element::Steel, Element::Air) => 2.0,
+        (Element::Air, Element::Steel) => 0.5,
+        (Element::Fire, Element::Steel) => 2.0,
+        (Element::Steel, Element::Fire) => 0.5,
+        // Digital advantages
+        (Element::Digital, Element::Electric) => 2.0,
+        (Element::Electric, Element::Digital) => 0.5,
+        // Air advantages
+        (Element::Air, Element::Grass) => 2.0,
+        (Element::Grass, Element::Air) => 0.5,
+        // Poison advantages
+        (Element::Poison, Element::Grass) => 2.0,
+        (Element::Grass, Element::Poison) => 0.5,
         // Same type
         _ if attacker == defender => 0.75,
         // Neutral
@@ -185,6 +202,11 @@ pub fn resolve_battle(mut a: BattleStats, mut b: BattleStats) -> BattleResult {
             Element::Rust => "Borrow Check",
             Element::Grass => "Vine Whip",
             Element::Dark => "Shadow Strike",
+            Element::Psychic => "Mind Blast",
+            Element::Steel => "Iron Slam",
+            Element::Digital => "Pixel Storm",
+            Element::Air => "Gale Force",
+            Element::Poison => "Toxic Surge",
         };
 
         let message = format!(

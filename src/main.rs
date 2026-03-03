@@ -9,11 +9,14 @@ mod config;
 #[allow(dead_code)]
 mod creatures;
 mod daemon;
+mod plugin;
 #[allow(dead_code)]
 mod render;
+mod sound;
 mod state;
 mod stats;
 mod team;
+mod theme;
 #[allow(dead_code)]
 mod tmux;
 mod ui;
@@ -100,6 +103,12 @@ enum Commands {
         #[command(subcommand)]
         action: TeamAction,
     },
+
+    /// Manage color themes
+    Theme {
+        #[command(subcommand)]
+        action: ThemeAction,
+    },
 }
 
 #[derive(Subcommand)]
@@ -117,11 +126,26 @@ enum TeamAction {
         addr: String,
     },
 
+    /// Auto-discover peers on local network via mDNS
+    Auto,
+
     /// Show team connection status
     Status,
 
     /// Leave the current team session
     Leave,
+}
+
+#[derive(Subcommand)]
+enum ThemeAction {
+    /// List available themes
+    List,
+
+    /// Set the active theme
+    Set {
+        /// Theme name (default, retro, neon, pastel)
+        name: String,
+    },
 }
 
 #[tokio::main]
@@ -189,6 +213,18 @@ async fn main() -> anyhow::Result<()> {
                     println!("🎮 Joining team at {addr}...");
                     team::client::connect_to_host(&addr, team_state, shutdown_rx).await?;
                 }
+                TeamAction::Auto => {
+                    println!("🔍 Searching for TermiMon peers on local network...");
+                    match team::mdns::discover_and_connect().await {
+                        Ok(()) => {}
+                        Err(e) => {
+                            println!("⚠️  mDNS discovery not available: {e}");
+                            println!("   Falling back to manual mode.");
+                            println!("   Host:  termimon team host");
+                            println!("   Join:  termimon team join <ip:port>");
+                        }
+                    }
+                }
                 TeamAction::Status => {
                     println!("🎮 Team Status");
                     if let Some(ts) = team::get_global_team_state() {
@@ -224,6 +260,16 @@ async fn main() -> anyhow::Result<()> {
                         }
                     }
                     println!("✅ Left team.");
+                }
+            }
+        }
+        Commands::Theme { action } => {
+            match action {
+                ThemeAction::List => {
+                    theme::list_themes();
+                }
+                ThemeAction::Set { name } => {
+                    theme::set_theme(&name)?;
                 }
             }
         }

@@ -91,6 +91,8 @@ pub struct NotificationConfig {
     pub system_notify: bool,
     #[serde(default = "default_cost_alert_threshold")]
     pub cost_alert_threshold_cents: u64,
+    #[serde(default)]
+    pub sounds: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -203,6 +205,7 @@ impl Default for NotificationConfig {
             terminal_bell: false,
             system_notify: true,
             cost_alert_threshold_cents: default_cost_alert_threshold(),
+            sounds: false,
         }
     }
 }

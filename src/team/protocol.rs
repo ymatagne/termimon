@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-pub const PROTOCOL_VERSION: &str = "0.4.0";
+pub const PROTOCOL_VERSION: &str = "0.5.0";
 
 /// All message types in the team protocol.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,6 +51,17 @@ pub enum Message {
     /// Any → Any: emote/reaction
     #[serde(rename = "emote")]
     Emote { from: String, emoji: String },
+
+    /// Host → All: broadcast a battle for spectators
+    #[serde(rename = "battle_broadcast")]
+    BattleBroadcast {
+        attacker_owner: String,
+        defender_owner: String,
+        attacker_creature: String,
+        defender_creature: String,
+        rounds: Vec<super::battle::BattleRound>,
+        winner: String,
+    },
 
     /// Disconnect notification
     #[serde(rename = "goodbye")]

@@ -208,6 +208,192 @@ pub const GITBAT_IDLE_1: SpriteFrame = [
     [  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T], // 15
 ];
 
+// ── Neuromorph (Psychic) ─────────────────────────────────────────────────────
+//
+//  A purple/pink brain creature with psionic waves
+//
+
+const P1: Color = Color::new(200, 100, 220);  // bright purple-pink
+const P2: Color = Color::new(160, 60, 180);   // medium purple
+const P3: Color = Color::new(120, 30, 140);   // dark purple
+const P4: Color = Color::new(240, 150, 255);  // light pink highlight
+const P5: Color = Color::new(255, 180, 230);  // brain fold highlight
+const PE: Color = Color::new(255, 255, 100);  // eyes (yellow glow)
+
+pub const NEUROMORPH_IDLE_1: SpriteFrame = [
+    [  T,  T,  T,  T,  T, P4,  T, P4,  T, P4,  T,  T,  T,  T,  T,  T],
+    [  T,  T,  T,  T, P4,  T, P4,  T, P4,  T, P4,  T,  T,  T,  T,  T],
+    [  T,  T,  T, P3, P2, P1, P5, P1, P5, P1, P2, P3,  T,  T,  T,  T],
+    [  T,  T, P3, P2, P5, P1, P5, P5, P5, P1, P5, P2, P3,  T,  T,  T],
+    [  T,  T, P2, P1, P5, P5, P1, P5, P1, P5, P5, P1, P2,  T,  T,  T],
+    [  T, P3, P1, P5, P1, P5, P5, P1, P5, P5, P1, P5, P1, P3,  T,  T],
+    [  T, P3, P1, P5, P5, P1, P5, P5, P5, P1, P5, P5, P1, P3,  T,  T],
+    [  T, P2, P1, P1, P1, P1, P1, P1, P1, P1, P1, P1, P1, P2,  T,  T],
+    [  T, P2, P1, PE, PE, P1, P1, P1, P1, PE, PE, P1, P1, P2,  T,  T],
+    [  T, P3, P1, PE, PE, P1, P1, P4, P1, PE, PE, P1, P1, P3,  T,  T],
+    [  T, P3, P2, P1, P1, P1, P4, P4, P4, P1, P1, P1, P2, P3,  T,  T],
+    [  T,  T, P3, P2, P1, P1, P1, P1, P1, P1, P1, P2, P3,  T,  T,  T],
+    [  T,  T,  T, P3, P2, P2, P1, P1, P1, P2, P2, P3,  T,  T,  T,  T],
+    [  T,  T,  T,  T, P3, P3,  T, P3,  T, P3, P3,  T,  T,  T,  T,  T],
+    [  T,  T,  T, P3, P3,  T,  T,  T,  T,  T, P3, P3,  T,  T,  T,  T],
+    [  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T],
+];
+
+// ── Dockersaur (Steel) ──────────────────────────────────────────────────────
+//
+//  A metallic dinosaur with container markings
+//
+
+const S1: Color = Color::new(160, 170, 190);  // bright steel
+const S2: Color = Color::new(120, 130, 150);  // medium steel
+const S3: Color = Color::new(80, 90, 110);    // dark steel
+const S4: Color = Color::new(200, 210, 230);  // highlight
+const S5: Color = Color::new(60, 140, 220);   // docker blue accent
+const SE: Color = Color::new(30, 30, 30);     // eyes
+
+pub const DOCKERSAUR_IDLE_1: SpriteFrame = [
+    [  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T],
+    [  T,  T,  T,  T,  T, S3, S2, S1, S1, S2, S3,  T,  T,  T,  T,  T],
+    [  T,  T,  T,  T, S3, S1, S1, S4, S1, S1, S1, S3,  T,  T,  T,  T],
+    [  T,  T,  T,  T, S1, SE, SE, S1, S1, SE, SE, S1,  T,  T,  T,  T],
+    [  T,  T,  T,  T, S1, SE, SE, S1, S1, SE, SE, S1,  T,  T,  T,  T],
+    [  T,  T,  T,  T, S2, S1, S1, S4, S4, S1, S1, S2,  T,  T,  T,  T],
+    [  T,  T,  T,  T,  T, S3, S2, S1, S2, S3,  T,  T,  T,  T,  T,  T],
+    [  T,  T,  T, S3, S2, S5, S5, S5, S5, S5, S2, S3,  T,  T,  T,  T],
+    [  T,  T, S3, S2, S5, S4, S5, S4, S5, S4, S5, S2, S3,  T,  T,  T],
+    [  T,  T, S2, S1, S5, S5, S5, S5, S5, S5, S5, S1, S2,  T,  T,  T],
+    [  T,  T, S2, S1, S1, S1, S1, S1, S1, S1, S1, S1, S2,  T,  T,  T],
+    [  T,  T, S3, S2, S1, S1, S4, S1, S4, S1, S1, S2, S3,  T,  T,  T],
+    [  T,  T,  T, S3, S2, S1, S1, S1, S1, S1, S2, S3,  T,  T,  T,  T],
+    [  T,  T, S3, S3,  T, S3, S2, S1, S2, S3,  T, S3, S3,  T,  T,  T],
+    [  T, S3, S3,  T,  T,  T, S3,  T, S3,  T,  T,  T, S3, S3,  T,  T],
+    [  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T],
+];
+
+// ── Termignite (Fire/Dark) ──────────────────────────────────────────────────
+//
+//  A dark flame creature with terminal symbols
+//
+
+const TG1: Color = Color::new(200, 60, 20);   // dark red-orange
+const TG2: Color = Color::new(160, 30, 10);   // deep dark red
+const TG3: Color = Color::new(100, 15, 5);    // very dark
+const TG4: Color = Color::new(255, 100, 30);  // bright flame
+const TG5: Color = Color::new(255, 200, 50);  // flame tip
+const TGE: Color = Color::new(0, 255, 0);     // green terminal eyes
+
+pub const TERMIGNITE_IDLE_1: SpriteFrame = [
+    [  T,  T,  T,  T,  T,  T, TG5,  T,  T, TG5,  T,  T,  T,  T,  T,  T],
+    [  T,  T,  T,  T,  T, TG5, TG4, TG5, TG5, TG4, TG5,  T,  T,  T,  T,  T],
+    [  T,  T,  T,  T, TG4, TG4, TG1, TG4, TG4, TG1, TG4, TG4,  T,  T,  T,  T],
+    [  T,  T,  T, TG3, TG2, TG1, TG1, TG1, TG1, TG1, TG2, TG3,  T,  T,  T,  T],
+    [  T,  T, TG3, TG2, TG1, TG1, TG1, TG1, TG1, TG1, TG1, TG2, TG3,  T,  T,  T],
+    [  T,  T, TG2, TG1, TGE, TGE, TG1, TG1, TG1, TGE, TGE, TG1, TG2,  T,  T,  T],
+    [  T,  T, TG2, TG1, TGE, TGE, TG1, TG1, TG1, TGE, TGE, TG1, TG2,  T,  T,  T],
+    [  T,  T, TG3, TG1, TG1, TG1, TG4, TG1, TG4, TG1, TG1, TG1, TG3,  T,  T,  T],
+    [  T,  T, TG3, TG2, TG1, TG1, TG1, TG4, TG1, TG1, TG1, TG2, TG3,  T,  T,  T],
+    [  T,  T,  T, TG3, TG2, TG1, TG1, TG1, TG1, TG1, TG2, TG3,  T,  T,  T,  T],
+    [  T,  T,  T, TG3, TG2, TG2, TG1, TG1, TG1, TG2, TG2, TG3,  T,  T,  T,  T],
+    [  T,  T, TG4, TG3, TG3, TG2, TG2, TG2, TG2, TG2, TG3, TG3, TG4,  T,  T,  T],
+    [  T, TG4, TG1,  T,  T, TG3, TG3, TG3, TG3, TG3,  T,  T, TG1, TG4,  T,  T],
+    [  T,  T,  T,  T, TG3, TG3,  T,  T,  T, TG3, TG3,  T,  T,  T,  T,  T],
+    [  T,  T,  T, TG3, TG3,  T,  T,  T,  T,  T, TG3, TG3,  T,  T,  T,  T],
+    [  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T],
+];
+
+// ── Pixelbyte (Digital) ─────────────────────────────────────────────────────
+//
+//  A glitchy digital creature with pixel artifacts
+//
+
+const PX1: Color = Color::new(0, 220, 255);    // cyan
+const PX2: Color = Color::new(0, 160, 200);    // dark cyan
+const PX3: Color = Color::new(0, 100, 140);    // darker cyan
+const PX4: Color = Color::new(255, 0, 200);    // magenta glitch
+const PX5: Color = Color::new(0, 255, 100);    // green glitch
+const PXE: Color = Color::new(255, 255, 255);  // white eyes
+
+pub const PIXELBYTE_IDLE_1: SpriteFrame = [
+    [  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T],
+    [  T,  T,  T, PX4,  T,  T,  T,  T,  T,  T,  T,  T, PX5,  T,  T,  T],
+    [  T,  T,  T, PX3, PX2, PX1, PX1, PX1, PX1, PX1, PX2, PX3,  T,  T,  T,  T],
+    [  T,  T, PX3, PX2, PX1, PX1, PX1, PX1, PX1, PX1, PX1, PX2, PX3,  T,  T,  T],
+    [  T,  T, PX2, PX1, PXE, PXE, PX1, PX1, PX1, PXE, PXE, PX1, PX2,  T,  T,  T],
+    [  T,  T, PX2, PX1, PXE, PXE, PX1, PX4, PX1, PXE, PXE, PX1, PX2,  T,  T,  T],
+    [  T,  T, PX2, PX1, PX1, PX1, PX1, PX1, PX1, PX1, PX1, PX1, PX2,  T,  T,  T],
+    [  T,  T, PX3, PX1, PX1, PX5, PX1, PX1, PX1, PX5, PX1, PX1, PX3,  T,  T,  T],
+    [  T,  T, PX3, PX2, PX1, PX1, PX1, PX1, PX1, PX1, PX1, PX2, PX3,  T,  T,  T],
+    [  T, PX4, PX3, PX2, PX2, PX1, PX1, PX1, PX1, PX1, PX2, PX2, PX3, PX5,  T,  T],
+    [  T,  T,  T, PX3, PX2, PX2, PX1, PX1, PX1, PX2, PX2, PX3,  T,  T,  T,  T],
+    [  T,  T,  T,  T, PX3, PX2, PX1, PX1, PX1, PX2, PX3,  T,  T,  T,  T,  T],
+    [  T,  T,  T,  T, PX3, PX3, PX2, PX2, PX2, PX3, PX3,  T,  T,  T,  T,  T],
+    [  T,  T,  T, PX3, PX3,  T, PX3,  T, PX3,  T, PX3, PX3,  T,  T,  T,  T],
+    [  T,  T, PX3, PX3,  T,  T,  T,  T,  T,  T,  T, PX3, PX3,  T,  T,  T],
+    [  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T],
+];
+
+// ── Cloudwisp (Air) ─────────────────────────────────────────────────────────
+//
+//  A floating cloud creature
+//
+
+const CW1: Color = Color::new(220, 230, 255);  // bright white-blue
+const CW2: Color = Color::new(180, 200, 240);  // light blue
+const CW3: Color = Color::new(140, 170, 220);  // medium blue
+const CW4: Color = Color::new(100, 140, 200);  // darker blue
+const CW5: Color = Color::new(240, 245, 255);  // white highlight
+const CWE: Color = Color::new(50, 50, 80);     // eyes
+
+pub const CLOUDWISP_IDLE_1: SpriteFrame = [
+    [  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T],
+    [  T,  T,  T,  T,  T, CW3, CW2, CW1, CW2, CW3,  T,  T,  T,  T,  T,  T],
+    [  T,  T,  T, CW3, CW2, CW1, CW5, CW5, CW5, CW1, CW2, CW3,  T,  T,  T,  T],
+    [  T,  T, CW3, CW1, CW5, CW5, CW1, CW5, CW1, CW5, CW5, CW1, CW3,  T,  T,  T],
+    [  T, CW4, CW2, CW1, CW5, CW1, CW1, CW1, CW1, CW1, CW5, CW1, CW2, CW4,  T,  T],
+    [  T, CW3, CW1, CW1, CW1, CW1, CW1, CW1, CW1, CW1, CW1, CW1, CW1, CW3,  T,  T],
+    [  T, CW3, CW1, CWE, CWE, CW1, CW1, CW1, CW1, CWE, CWE, CW1, CW1, CW3,  T,  T],
+    [  T, CW3, CW1, CWE, CWE, CW1, CW1, CW5, CW1, CWE, CWE, CW1, CW1, CW3,  T,  T],
+    [ CW4, CW2, CW1, CW1, CW1, CW1, CW5, CW5, CW5, CW1, CW1, CW1, CW1, CW2, CW4,  T],
+    [ CW3, CW1, CW5, CW1, CW1, CW1, CW1, CW1, CW1, CW1, CW1, CW1, CW5, CW1, CW3,  T],
+    [ CW4, CW2, CW1, CW5, CW1, CW1, CW1, CW1, CW1, CW1, CW1, CW5, CW1, CW2, CW4,  T],
+    [  T, CW3, CW2, CW1, CW1, CW5, CW1, CW1, CW1, CW5, CW1, CW1, CW2, CW3,  T,  T],
+    [  T,  T, CW4, CW3, CW2, CW1, CW1, CW1, CW1, CW1, CW2, CW3, CW4,  T,  T,  T],
+    [  T,  T,  T,  T, CW4, CW3, CW2, CW2, CW2, CW3, CW4,  T,  T,  T,  T,  T],
+    [  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T],
+    [  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T],
+];
+
+// ── Dataslime (Poison) ──────────────────────────────────────────────────────
+//
+//  A green slime creature with database symbols
+//
+
+const DS1: Color = Color::new(80, 220, 80);    // bright green
+const DS2: Color = Color::new(50, 170, 50);    // medium green
+const DS3: Color = Color::new(30, 120, 30);    // dark green
+const DS4: Color = Color::new(120, 255, 120);  // highlight green
+const DS5: Color = Color::new(200, 255, 100);  // yellow-green
+const DSE: Color = Color::new(20, 20, 20);     // eyes
+
+pub const DATASLIME_IDLE_1: SpriteFrame = [
+    [  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T],
+    [  T,  T,  T,  T,  T,  T, DS4,  T,  T,  T,  T,  T,  T,  T,  T,  T],
+    [  T,  T,  T,  T,  T, DS4, DS4, DS4,  T,  T,  T,  T,  T,  T,  T,  T],
+    [  T,  T,  T,  T, DS3, DS2, DS1, DS2, DS3,  T,  T,  T,  T,  T,  T,  T],
+    [  T,  T,  T, DS3, DS1, DS1, DS4, DS1, DS1, DS3,  T,  T,  T,  T,  T,  T],
+    [  T,  T, DS3, DS1, DS1, DS1, DS1, DS1, DS1, DS1, DS3,  T,  T,  T,  T,  T],
+    [  T, DS3, DS1, DS1, DSE, DSE, DS1, DSE, DSE, DS1, DS1, DS3,  T,  T,  T,  T],
+    [  T, DS2, DS1, DS1, DSE, DSE, DS1, DSE, DSE, DS1, DS1, DS2,  T,  T,  T,  T],
+    [  T, DS2, DS1, DS1, DS1, DS1, DS5, DS1, DS1, DS1, DS1, DS2,  T,  T,  T,  T],
+    [ DS3, DS1, DS1, DS4, DS1, DS5, DS5, DS5, DS1, DS4, DS1, DS1, DS3,  T,  T,  T],
+    [ DS3, DS1, DS4, DS1, DS1, DS1, DS1, DS1, DS1, DS1, DS4, DS1, DS3,  T,  T,  T],
+    [ DS2, DS1, DS1, DS1, DS1, DS1, DS1, DS1, DS1, DS1, DS1, DS1, DS2,  T,  T,  T],
+    [  T, DS2, DS1, DS1, DS4, DS1, DS1, DS1, DS4, DS1, DS1, DS2,  T,  T,  T,  T],
+    [  T,  T, DS3, DS2, DS2, DS1, DS1, DS1, DS2, DS2, DS3,  T,  T,  T,  T,  T],
+    [  T,  T,  T, DS3, DS3, DS2, DS2, DS2, DS3, DS3,  T,  T,  T,  T,  T,  T],
+    [  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T],
+];
+
 // ── Backward compatibility alias ─────────────────────────────────────────────
 pub const EMBERCLI_IDLE: SpriteFrame = EMBERCLI_IDLE_1;
 
@@ -222,6 +408,12 @@ pub fn all_idle_sprites() -> Vec<(&'static str, &'static SpriteFrame)> {
         ("Rustacean",   &RUSTACEAN_IDLE_1),
         ("Pythorn",     &PYTHORN_IDLE_1),
         ("Gitbat",      &GITBAT_IDLE_1),
+        ("Neuromorph",  &NEUROMORPH_IDLE_1),
+        ("Dockersaur",  &DOCKERSAUR_IDLE_1),
+        ("Termignite",  &TERMIGNITE_IDLE_1),
+        ("Pixelbyte",   &PIXELBYTE_IDLE_1),
+        ("Cloudwisp",   &CLOUDWISP_IDLE_1),
+        ("Dataslime",   &DATASLIME_IDLE_1),
     ]
 }
 
@@ -234,26 +426,19 @@ pub fn sprite_for_species(name: &str) -> &'static SpriteFrame {
         "rustacean"   => &RUSTACEAN_IDLE_1,
         "pythorn"     => &PYTHORN_IDLE_1,
         "gitbat"      => &GITBAT_IDLE_1,
+        "neuromorph"  => &NEUROMORPH_IDLE_1,
+        "dockersaur"  => &DOCKERSAUR_IDLE_1,
+        "termignite"  => &TERMIGNITE_IDLE_1,
+        "pixelbyte"   => &PIXELBYTE_IDLE_1,
+        "cloudwisp"   => &CLOUDWISP_IDLE_1,
+        "dataslime"   => &DATASLIME_IDLE_1,
         _ => &EMBERCLI_IDLE_1, // default fallback
     }
 }
 
 /// Get the idle sprite for an agent kind string (e.g. "Claude Code" → embercli).
 pub fn sprite_for_agent(agent_kind: &str) -> &'static SpriteFrame {
-    let lower = agent_kind.to_lowercase();
-    if lower.contains("claude") {
-        &EMBERCLI_IDLE_1
-    } else if lower.contains("codex") {
-        &VOLTPROMPT_IDLE_1
-    } else if lower.contains("aider") {
-        &SHELLOISE_IDLE_1
-    } else if lower.contains("cursor") {
-        &RUSTACEAN_IDLE_1
-    } else if lower.contains("continue") || lower.contains("copilot") {
-        &PYTHORN_IDLE_1
-    } else {
-        &GITBAT_IDLE_1
-    }
+    sprite_for_species(species_for_agent(agent_kind))
 }
 
 /// Map agent kind to creature species name.
@@ -263,7 +448,10 @@ pub fn species_for_agent(agent_kind: &str) -> &'static str {
 }
 
 /// All available species, in rotation order.
-const ALL_SPECIES: &[&str] = &["embercli", "voltprompt", "shelloise", "rustacean", "pythorn", "gitbat"];
+const ALL_SPECIES: &[&str] = &[
+    "embercli", "voltprompt", "shelloise", "rustacean", "pythorn", "gitbat",
+    "neuromorph", "dockersaur", "termignite", "pixelbyte", "cloudwisp", "dataslime",
+];
 
 /// Get species for an agent kind + instance index.
 /// First instance of each kind gets the default species, additional instances
@@ -280,6 +468,18 @@ pub fn species_for_agent_idx(agent_kind: &str, instance_idx: usize) -> &'static 
         3 // rustacean
     } else if lower.contains("continue") || lower.contains("copilot") {
         4 // pythorn
+    } else if lower.contains("gpt") || lower.contains("openai") {
+        6 // neuromorph
+    } else if lower.contains("docker") {
+        7 // dockersaur
+    } else if lower.contains("vim") || lower.contains("tmux") {
+        8 // termignite
+    } else if lower.contains("game") || lower.contains("unity") || lower.contains("godot") {
+        9 // pixelbyte
+    } else if lower.contains("railway") || lower.contains("fly") || lower.contains("vercel") || lower.contains("deploy") {
+        10 // cloudwisp
+    } else if lower.contains("database") || lower.contains("postgres") || lower.contains("mysql") || lower.contains("redis") {
+        11 // dataslime
     } else {
         5 // gitbat
     };

@@ -5,6 +5,7 @@
 
 pub mod battle;
 pub mod client;
+pub mod mdns;
 pub mod peer;
 pub mod protocol;
 pub mod server;
