@@ -355,15 +355,21 @@ fn tick(
                 let (species_str, binding, is_new) = if let Some(existing) = bindings.get(&agent_id) {
                     (existing.creature_species.clone(), existing.clone(), false)
                 } else {
-                    // Count how many same-kind agents already have species assigned
-                    drop(bindings); // release before we need tracked
-                    // Can't borrow tracked here, count from identity file instead
+                    // Find the next unused species by checking all existing bindings
+                    drop(bindings);
                     let all_bindings = identity::load_bindings();
-                    let default_species = crate::creatures::sprites::species_for_agent(&agent_kind_str);
-                    let same_species_count = all_bindings.values()
-                        .filter(|b| b.creature_species == default_species)
-                        .count();
-                    let species = crate::creatures::sprites::species_for_agent_idx(&agent_kind_str, same_species_count);
+                    let used_species: std::collections::HashSet<&str> = all_bindings.values()
+                        .map(|b| b.creature_species.as_str())
+                        .collect();
+                    // Try each index until we find an unused species
+                    let mut species = crate::creatures::sprites::species_for_agent(&agent_kind_str);
+                    for idx in 0..6 {
+                        let candidate = crate::creatures::sprites::species_for_agent_idx(&agent_kind_str, idx);
+                        if !used_species.contains(candidate) {
+                            species = candidate;
+                            break;
+                        }
+                    }
                     let (b, _) = identity::get_or_create_binding(&agent_id, species);
                     (species.to_string(), b, true)
                 };
