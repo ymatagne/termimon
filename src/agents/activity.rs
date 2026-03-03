@@ -50,6 +50,8 @@ pub struct ActivityEvent {
     pub agent_name: String,
     pub message: String,
     pub event_type: EventType,
+    #[serde(default)]
+    pub project: String,
 }
 
 /// Ring-buffer of activity events.
@@ -120,6 +122,12 @@ impl ActivityFeed {
             return; // no new data
         }
 
+        // Extract project dir from path (parent directory name)
+        let project = path.parent()
+            .and_then(|p| p.file_name())
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
+
         let content = match std::fs::read_to_string(path) {
             Ok(c) => c,
             Err(_) => return,
@@ -128,7 +136,8 @@ impl ActivityFeed {
         // Only process lines that start after last_offset
         let new_bytes = &content[last_offset as usize..];
         for line in new_bytes.lines() {
-            if let Some(ev) = parse_activity_line(line) {
+            if let Some(mut ev) = parse_activity_line(line) {
+                ev.project = project.clone();
                 self.push(ev);
             }
         }
@@ -174,7 +183,8 @@ fn parse_activity_line(line: &str) -> Option<ActivityEvent> {
                         agent_icon,
                         agent_name,
                         message: format!("ran `{short_cmd}`"),
-                        event_type: EventType::Command,
+                        project: String::new(),
+                    event_type: EventType::Command,
                     })
                 }
                 "Write" | "write" | "write_file" => {
@@ -188,7 +198,8 @@ fn parse_activity_line(line: &str) -> Option<ActivityEvent> {
                         agent_icon,
                         agent_name,
                         message: format!("wrote {short}"),
-                        event_type: EventType::FileWrite,
+                        project: String::new(),
+                    event_type: EventType::FileWrite,
                     })
                 }
                 "Edit" | "edit" | "edit_file" => {
@@ -202,7 +213,8 @@ fn parse_activity_line(line: &str) -> Option<ActivityEvent> {
                         agent_icon,
                         agent_name,
                         message: format!("edited {short}"),
-                        event_type: EventType::FileWrite,
+                        project: String::new(),
+                    event_type: EventType::FileWrite,
                     })
                 }
                 "Read" | "read" | "read_file" => {
@@ -216,7 +228,8 @@ fn parse_activity_line(line: &str) -> Option<ActivityEvent> {
                         agent_icon,
                         agent_name,
                         message: format!("read {short}"),
-                        event_type: EventType::FileRead,
+                        project: String::new(),
+                    event_type: EventType::FileRead,
                     })
                 }
                 _ => {
@@ -225,7 +238,8 @@ fn parse_activity_line(line: &str) -> Option<ActivityEvent> {
                         agent_icon,
                         agent_name,
                         message: format!("used tool: {tool_name}"),
-                        event_type: EventType::Command,
+                        project: String::new(),
+                    event_type: EventType::Command,
                     })
                 }
             }
@@ -257,7 +271,8 @@ fn parse_activity_line(line: &str) -> Option<ActivityEvent> {
                                     agent_icon: agent_icon.clone(),
                                     agent_name: agent_name.clone(),
                                     message: format!("ran `{short_cmd}`"),
-                                    event_type: EventType::Command,
+                                    project: String::new(),
+                    event_type: EventType::Command,
                                 })
                             }
                             "Write" | "write" | "write_file" => {
@@ -271,7 +286,8 @@ fn parse_activity_line(line: &str) -> Option<ActivityEvent> {
                                     agent_icon: agent_icon.clone(),
                                     agent_name: agent_name.clone(),
                                     message: format!("wrote {short}"),
-                                    event_type: EventType::FileWrite,
+                                    project: String::new(),
+                    event_type: EventType::FileWrite,
                                 })
                             }
                             "Edit" | "edit" | "edit_file" => {
@@ -285,7 +301,8 @@ fn parse_activity_line(line: &str) -> Option<ActivityEvent> {
                                     agent_icon: agent_icon.clone(),
                                     agent_name: agent_name.clone(),
                                     message: format!("edited {short}"),
-                                    event_type: EventType::FileWrite,
+                                    project: String::new(),
+                    event_type: EventType::FileWrite,
                                 })
                             }
                             "Read" | "read" | "read_file" => {
@@ -299,7 +316,8 @@ fn parse_activity_line(line: &str) -> Option<ActivityEvent> {
                                     agent_icon: agent_icon.clone(),
                                     agent_name: agent_name.clone(),
                                     message: format!("read {short}"),
-                                    event_type: EventType::FileRead,
+                                    project: String::new(),
+                    event_type: EventType::FileRead,
                                 })
                             }
                             _ if !tool_name.is_empty() => {
@@ -308,7 +326,8 @@ fn parse_activity_line(line: &str) -> Option<ActivityEvent> {
                                     agent_icon: agent_icon.clone(),
                                     agent_name: agent_name.clone(),
                                     message: format!("used tool: {tool_name}"),
-                                    event_type: EventType::Command,
+                                    project: String::new(),
+                    event_type: EventType::Command,
                                 })
                             }
                             _ => None,
@@ -348,7 +367,8 @@ fn parse_activity_line(line: &str) -> Option<ActivityEvent> {
                             cost::format_tokens(total),
                             cost::format_cost(cost_cents),
                         ),
-                        event_type: EventType::TokenUsage,
+                        project: String::new(),
+                    event_type: EventType::TokenUsage,
                     })
                 } else {
                     None // Skip zero-token usage events
@@ -359,6 +379,7 @@ fn parse_activity_line(line: &str) -> Option<ActivityEvent> {
                     agent_icon,
                     agent_name,
                     message: "responding...".to_string(),
+                    project: String::new(),
                     event_type: EventType::Responding,
                 })
             }
@@ -371,7 +392,8 @@ fn parse_activity_line(line: &str) -> Option<ActivityEvent> {
                 agent_icon,
                 agent_name,
                 message: "thinking...".to_string(),
-                event_type: EventType::Thinking,
+                project: String::new(),
+                    event_type: EventType::Thinking,
             })
         }
 
@@ -388,7 +410,8 @@ fn parse_activity_line(line: &str) -> Option<ActivityEvent> {
                 agent_icon,
                 agent_name,
                 message: format!("error: {short}"),
-                event_type: EventType::Error,
+                project: String::new(),
+                    event_type: EventType::Error,
             })
         }
 
@@ -404,6 +427,7 @@ fn parse_activity_line(line: &str) -> Option<ActivityEvent> {
                     agent_icon,
                     agent_name,
                     message: format!("error: {short}"),
+                    project: String::new(),
                     event_type: EventType::Error,
                 })
             } else {
@@ -418,7 +442,8 @@ fn parse_activity_line(line: &str) -> Option<ActivityEvent> {
                 agent_icon,
                 agent_name,
                 message: "waiting for input...".to_string(),
-                event_type: EventType::StateChange,
+                project: String::new(),
+                    event_type: EventType::StateChange,
             })
         }
 
@@ -462,7 +487,8 @@ mod tests {
                 agent_icon: "🔥".into(),
                 agent_name: "test".into(),
                 message: format!("event {i}"),
-                event_type: EventType::Command,
+                project: String::new(),
+                    event_type: EventType::Command,
             });
         }
         assert_eq!(feed.len(), 3);
@@ -478,7 +504,8 @@ mod tests {
                 agent_icon: "🔥".into(),
                 agent_name: "test".into(),
                 message: format!("event {i}"),
-                event_type: EventType::Command,
+                project: String::new(),
+                    event_type: EventType::Command,
             });
         }
         let recent = feed.recent(3);

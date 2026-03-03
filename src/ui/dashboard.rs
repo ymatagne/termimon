@@ -669,14 +669,15 @@ fn draw_activity_feed(frame: &mut Frame, area: Rect, app: &DashApp, agent: &Agen
             .recent_activity
             .iter()
             .filter(|evt| {
-                // Match by agent name (case-insensitive) or creature name
-                let evt_name = evt.agent_name.to_lowercase();
-                let kind = agent.kind.to_lowercase();
-                evt_name == kind
-                    || evt_name.contains("claude") && kind.contains("claude")
-                    || evt_name == agent.creature_name.to_lowercase()
-                    || status.agents.len() <= 1 // if only one agent, show all
-                    || true // For now, show all activity for any agent (until per-agent mapping works)
+                // Match by project directory (encoded dir name from working_dir)
+                if let Some(ref wd) = agent.working_dir {
+                    let encoded = crate::agents::cost::encode_working_dir(wd);
+                    if !evt.project.is_empty() && evt.project == encoded {
+                        return true;
+                    }
+                }
+                // Fallback: if only one agent, show all
+                status.agents.len() <= 1
             })
             .collect();
 

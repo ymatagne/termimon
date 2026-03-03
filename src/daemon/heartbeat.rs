@@ -404,11 +404,23 @@ fn award_xp_from_activity(
         return;
     }
 
-    // Build a map of agent_name → agent_id for matching
+    // Build maps for matching events to agents
     let name_to_id: HashMap<String, String> = tracked
         .values()
         .filter(|a| !a.agent_id.is_empty())
         .map(|a| (a.kind.to_string().to_lowercase(), a.agent_id.clone()))
+        .collect();
+    
+    // Build project → agent_id map for project-based matching
+    let project_to_id: HashMap<String, String> = tracked
+        .values()
+        .filter(|a| !a.agent_id.is_empty() && a.working_dir.is_some())
+        .map(|a| {
+            let encoded = crate::agents::cost::encode_working_dir(
+                a.working_dir.as_deref().unwrap_or("/")
+            );
+            (encoded, a.agent_id.clone())
+        })
         .collect();
 
     // XP rewards per event type
@@ -427,25 +439,36 @@ fn award_xp_from_activity(
         };
 
         if xp > 0 {
-            // Try to match event to an agent
-            let agent_name = event.agent_name.to_lowercase();
-            if let Some(agent_id) = name_to_id.get(&agent_name) {
-                *xp_gains.entry(agent_id.clone()).or_insert(0) += xp;
-            } else {
-                // Fallback: fuzzy match — "claude" matches "claude code"
-                let mut matched = false;
-                for (name, id) in &name_to_id {
-                    if agent_name.contains(name) || name.contains(&agent_name) {
-                        *xp_gains.entry(id.clone()).or_insert(0) += xp;
-                        matched = true;
-                        break;
+            // Try to match event to an agent by project dir first
+            let mut matched = false;
+            if !event.project.is_empty() {
+                if let Some(agent_id) = project_to_id.get(&event.project) {
+                    *xp_gains.entry(agent_id.clone()).or_insert(0) += xp;
+                    matched = true;
+                }
+            }
+            
+            if !matched {
+                // Fallback: match by name
+                let agent_name = event.agent_name.to_lowercase();
+                if let Some(agent_id) = name_to_id.get(&agent_name) {
+                    *xp_gains.entry(agent_id.clone()).or_insert(0) += xp;
+                    matched = true;
+                } else {
+                    for (name, id) in &name_to_id {
+                        if agent_name.contains(name) || name.contains(&agent_name) {
+                            *xp_gains.entry(id.clone()).or_insert(0) += xp;
+                            matched = true;
+                            break;
+                        }
                     }
                 }
-                // Last resort: if only one agent, give it all XP
-                if !matched && name_to_id.len() == 1 {
-                    if let Some(id) = name_to_id.values().next() {
-                        *xp_gains.entry(id.clone()).or_insert(0) += xp;
-                    }
+            }
+            
+            // Last resort: if only one agent, give it all XP
+            if !matched && name_to_id.len() == 1 {
+                if let Some(id) = name_to_id.values().next() {
+                    *xp_gains.entry(id.clone()).or_insert(0) += xp;
                 }
             }
         }
