@@ -28,9 +28,10 @@ pub async fn run_heartbeat(mut shutdown: watch::Receiver<bool>) {
     let mut tracked: HashMap<String, TrackedAgent> = HashMap::new();
     let mut cycle: u64 = 0;
 
-    // Intelligence layer: cost tracking & activity feed
+    // Intelligence layer: cost tracking, activity feed, productivity
     let mut cost_tracker = AgentCostTracker::new();
     let mut activity_feed = ActivityFeed::new();
+    let mut productivity_tracker = crate::agents::productivity::ProductivityTracker::new();
     /// How often (in heartbeat cycles) to run the heavier transcript scan.
     /// With 2s heartbeats, 15 cycles ≈ every 30 seconds.
     const SCAN_INTERVAL: u64 = 15;
@@ -61,14 +62,46 @@ pub async fn run_heartbeat(mut shutdown: watch::Receiver<bool>) {
             }
         }
 
+        // Update productivity stats (every 30s like cost scanning)
+        if cycle % SCAN_INTERVAL == 1 {
+            for agent in tracked.values() {
+                if !agent.agent_id.is_empty() {
+                    if let Some(ref wd) = agent.working_dir {
+                        let cost = cost_tracker
+                            .summary()
+                            .iter()
+                            .find(|c| c.agent_id == agent.agent_id)
+                            .map(|c| c.cost_cents)
+                            .unwrap_or(0);
+                        productivity_tracker.update(&agent.agent_id, wd, cost);
+                    }
+                }
+            }
+        }
+
         // Push state to IPC
         if let Some(state) = super::server::get_global_state() {
             if let Ok(mut st) = state.lock() {
                 st.heartbeat_count = cycle;
-                st.agents = tracked
+                let mut snapshots: Vec<super::server::AgentSnapshot> = tracked
                     .values()
                     .map(super::server::AgentSnapshot::from)
                     .collect();
+                // Attach productivity stats to each snapshot
+                for snap in &mut snapshots {
+                    if let Some(ps) = productivity_tracker.get(&snap.agent_id) {
+                        snap.productivity = Some(super::server::ProductivitySnapshot {
+                            files_changed: ps.files_changed,
+                            lines_added: ps.lines_added,
+                            lines_removed: ps.lines_removed,
+                            commits: ps.commits_this_session,
+                            build_attempts: ps.build_attempts,
+                            build_successes: ps.build_successes,
+                            lines_per_dollar: ps.lines_per_dollar,
+                        });
+                    }
+                }
+                st.agents = snapshots;
                 st.costs = cost_tracker.summary();
                 st.recent_activity = activity_feed.recent(20);
             }

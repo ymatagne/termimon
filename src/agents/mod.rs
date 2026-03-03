@@ -11,6 +11,7 @@ pub mod cost;
 pub mod detector;
 pub mod generic;
 pub mod identity;
+pub mod productivity;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;

@@ -30,6 +30,20 @@ pub struct AgentSnapshot {
     pub element_icon: String,
     pub stage: u8,
     pub xp: u64,
+    #[serde(default)]
+    pub productivity: Option<ProductivitySnapshot>,
+}
+
+/// Productivity stats snapshot for IPC.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct ProductivitySnapshot {
+    pub files_changed: u32,
+    pub lines_added: u32,
+    pub lines_removed: u32,
+    pub commits: u32,
+    pub build_attempts: u32,
+    pub build_successes: u32,
+    pub lines_per_dollar: f64,
 }
 
 impl From<&TrackedAgent> for AgentSnapshot {
@@ -68,6 +82,7 @@ impl From<&TrackedAgent> for AgentSnapshot {
             element_icon,
             stage,
             xp,
+            productivity: None,
         }
     }
 }
