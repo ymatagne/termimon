@@ -78,19 +78,38 @@ pub fn get_working_dir(pid: u32) -> Option<String> {
 }
 
 fn get_cwd_via_lsof(pid: u32) -> Option<String> {
+    let args = ["-a", "-d", "cwd", "-p", &pid.to_string(), "-Fn"];
+    // Try lsof from PATH first, then common macOS location
     let output = std::process::Command::new("lsof")
-        .args(["-d", "cwd", "-p", &pid.to_string(), "-Fn"])
+        .args(&args)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::null())
         .output()
-        .ok()?;
+        .ok()
+        .filter(|o| !o.stdout.is_empty())
+        .or_else(|| {
+            std::process::Command::new("/usr/sbin/lsof")
+                .args(&args)
+                .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::null())
+                .output()
+                .ok()
+        })?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
+    let mut saw_fcwd = false;
     for line in stdout.lines() {
-        if let Some(path) = line.strip_prefix('n') {
-            if path.starts_with('/') {
-                return Some(path.to_string());
+        if line == "fcwd" {
+            saw_fcwd = true;
+            continue;
+        }
+        if saw_fcwd {
+            if let Some(path) = line.strip_prefix('n') {
+                if path.starts_with('/') {
+                    return Some(path.to_string());
+                }
             }
+            saw_fcwd = false;
         }
     }
     None
