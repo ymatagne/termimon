@@ -10,7 +10,6 @@
 pub mod halfblock;
 pub mod text;
 
-use crate::creatures::{Color, SpriteFrame};
 
 /// Rendering mode, chosen by config or terminal capability.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
