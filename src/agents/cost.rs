@@ -228,16 +228,31 @@ fn parse_token_line(line: &str, session_id: &str) -> Option<TokenUsageEvent> {
 ///   ~/.claude/projects/-private-tmp-termimon/abc123.jsonl
 /// The parent directory name encodes the working dir with "-" replacing "/",
 /// so "-private-tmp-termimon" → "/private/tmp/termimon".
-pub fn session_working_dir(file_path: &std::path::Path) -> Option<String> {
+/// Get the Claude project dir name from a JSONL file path.
+/// e.g. `/Users/yan/.claude/projects/-Users-yan-github-com-foo/abc.jsonl` → `-Users-yan-github-com-foo`
+pub fn session_project_dir_name(file_path: &std::path::Path) -> Option<String> {
     let parent = file_path.parent()?;
     let dir_name = parent.file_name()?.to_str()?;
-    // The dir name starts with "-" which represents the leading "/"
-    // Each "-" in the name represents a "/" separator
     if dir_name.starts_with('-') {
-        Some(dir_name.replace('-', "/"))
+        Some(dir_name.to_string())
     } else {
         None
     }
+}
+
+/// Encode a working directory the way Claude does for its project folder names.
+/// e.g. `/Users/yan/github.com/foo` → `-Users-yan-github-com-foo`
+/// `/private/tmp/termimon` → `-private-tmp-termimon`
+pub fn encode_working_dir(path: &str) -> String {
+    // Claude replaces "/" with "-" and strips leading slash
+    let cleaned = path.strip_prefix('/').unwrap_or(path);
+    let encoded = cleaned.replace('/', "-").replace('.', "-");
+    format!("-{}", encoded)
+}
+
+/// Legacy function name for compatibility
+pub fn session_working_dir(file_path: &std::path::Path) -> Option<String> {
+    session_project_dir_name(file_path)
 }
 
 // ─── Tracker operations ──────────────────────────────────────────────────
@@ -291,16 +306,10 @@ impl AgentCostTracker {
             if events.is_empty() {
                 continue;
             }
-            // Try to map this file's working directory to a tracked agent_id
-            let key = if let Some(wd) = session_working_dir(&file) {
-                // Try exact match first, then try with /private prefix (macOS)
-                workdir_to_agent_id.get(&wd)
-                    .or_else(|| workdir_to_agent_id.get(&format!("/private{}", wd)))
-                    .or_else(|| {
-                        // Also try stripping /private from wd to match
-                        let stripped = wd.strip_prefix("/private").unwrap_or(&wd);
-                        workdir_to_agent_id.get(stripped)
-                    })
+            // Try to map this file's project dir to a tracked agent_id
+            // workdir_to_agent_id keys are encoded dir names like "-Users-yan-foo"
+            let key = if let Some(project_dir) = session_project_dir_name(&file) {
+                workdir_to_agent_id.get(&project_dir)
                     .cloned()
                     .unwrap_or_else(|| events[0].session_id.clone())
             } else {
