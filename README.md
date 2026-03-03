@@ -1,54 +1,58 @@
-<![CDATA[<div align="center">
+# 🎮 TermiMon
 
-```
- _____                   _ __  __
-|_   _|__ _ __ _ __ ___ (_)  \/  | ___  _ __
-  | |/ _ \ '__| '_ ` _ \| | |\/| |/ _ \| '_ \
-  | |  __/ |  | | | | | | | |  | | (_) | | | |
-  |_|\___|_|  |_| |_| |_|_|_|  |_|\___/|_| |_|
-```
-
-### Your AI agents, alive in the terminal.
+**Your AI agents, alive in the terminal.**
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![CI](https://github.com/yanmatagne/termimon/actions/workflows/ci.yml/badge.svg)](https://github.com/yanmatagne/termimon/actions/workflows/ci.yml)
+[![CI](https://github.com/ymatagne/termimon/actions/workflows/ci.yml/badge.svg)](https://github.com/ymatagne/termimon/actions/workflows/ci.yml)
 
-</div>
+TermiMon turns your AI coding agents into animated pixel art creatures inside tmux. Each agent gets its own creature that reacts in real-time — typing when writing code, thinking when planning, sleeping when idle, and evolving as it completes work.
 
 ---
 
 ## ✨ Features
 
-- 🐾 **Living Creatures** — AI agents rendered as interactive terminal pets
-- 🎨 **Beautiful TUI** — Smooth animations powered by Ratatui
-- ⚡ **Lightweight** — Pure Rust, minimal resource usage
-- 🔌 **Agent Integration** — Monitor your AI agents in real-time
-- 🎮 **Interactive** — Feed, train, and evolve your creatures
-- 📊 **Status Dashboard** — See agent health, mood, and activity at a glance
-- 🌈 **Themeable** — Customize colors and appearance
+- 🐾 **Living Creatures** — AI agents rendered as animated pixel art companions
+- 🎨 **Beautiful Pixel Art** — 16×16 sprites with half-block rendering (▀▄)
+- ⚡ **Lightweight** — Pure Rust, single binary, <1% CPU, <20MB RAM
+- 🔌 **Agent Detection** — Auto-detects Claude Code, Codex, and aider
+- 📊 **tmux Integration** — Status bar + popup dashboard
+- 🏆 **XP & Evolution** — Creatures evolve through 3 stages as your agents work
+- 🎮 **Interactive** — Pokedex, assignments, and creature management
+
+## 🐾 Creatures
+
+| Creature | Element | Agent | Description |
+|----------|---------|-------|-------------|
+| **Embercli** 🔥 | Fire | Claude Code | A fiery command-line spirit. Thrives on fast execution and hot loops. |
+| **Voltprompt** ⚡ | Electric | Codex | A crackling prompt engineer. Sparks fly when tokens flow. |
+| **Shelloise** 💧 | Water | aider | A calm, resilient shell dweller. Patient and deeply connected to pipes. |
+
+Each creature has **9 animation states**: idle, typing, reading, thinking, running, sleeping, celebrating, error, waiting.
+
+Each creature evolves through **3 stages** as it gains XP from agent activity.
 
 ## 🚀 Install
 
-### One-liner (easiest)
+**One-liner (macOS/Linux):**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ymatagne/termimon/main/install.sh | sh
 ```
 
-### Homebrew
+**Homebrew:**
 
 ```bash
 brew tap ymatagne/termimon
 brew install termimon
 ```
 
-### Cargo
+**Cargo:**
 
 ```bash
 cargo install termimon
 ```
 
-### From source
+**From source:**
 
 ```bash
 git clone https://github.com/ymatagne/termimon.git
@@ -59,51 +63,63 @@ make install
 ## 🏁 Quick Start
 
 ```bash
+# Start the daemon (inside a tmux session)
 termimon start
+
+# Check what's running
+termimon status
+
+# Open the dashboard popup
+termimon dash
+
+# See your creature collection
+termimon pokedex
 ```
+
+TermiMon automatically detects Claude Code, Codex, and aider running in your tmux panes and assigns creatures to them.
 
 ## 📸 Screenshots
 
 > _Coming soon!_
 
-## 🐾 Creature Showcase
-
-| Creature | Type | Element | Description |
-|----------|------|---------|-------------|
-| **Embercli** 🔥 | Fire | CLI | A fiery command-line spirit. Thrives on fast execution and hot loops. |
-| **Voltprompt** ⚡ | Electric | Prompt | A crackling prompt engineer. Sparks fly when tokens flow. |
-| **Shelloise** 💧 | Water | Shell | A calm, resilient shell dweller. Patient, steady, and deeply connected to pipes. |
-
 ## 🔧 How It Works
 
-TermiMon connects to your running AI agents and represents each one as a unique creature in your terminal. Creatures react to agent activity in real-time — they animate when busy, sleep when idle, and evolve as your agents grow.
-
-1. **Discovery** — TermiMon detects running agents via configured endpoints
-2. **Binding** — Each agent is matched to a creature based on its profile
-3. **Rendering** — The TUI renders creatures with smooth frame-based animation
-4. **Interaction** — You can interact with creatures to inspect or control agents
+1. **Discovery** — TermiMon polls tmux panes every 2 seconds, inspecting process trees and terminal output
+2. **Detection** — Recognizes AI agents by process name and output patterns (also reads Claude Code JSONL transcripts)
+3. **Binding** — Each detected agent gets a creature assigned (auto or manual)
+4. **Rendering** — Creatures animate in the tmux status bar and popup dashboard using half-block pixel art
+5. **Evolution** — Agents earn XP for their creatures by writing files, completing tasks, and fixing errors
 
 ## ⚙️ Configuration
 
-TermiMon looks for config at `~/.config/termimon/config.toml`:
+Config lives at `~/.termimon/config.toml`:
 
 ```toml
-[display]
-fps = 30
+[general]
+poll_interval_ms = 2000
+display_mode = "statusbar"  # statusbar | popup | pane
+animation_fps = 4
 theme = "default"
 
-[agents]
-poll_interval_ms = 1000
+[statusbar]
+position = "right"
+max_creatures = 5
+show_xp = false
+show_state = true
 
-[[agents.sources]]
-name = "my-agent"
-endpoint = "http://localhost:8080/health"
-creature = "embercli"
+[creatures.assignments]
+claude = "embercli"
+codex = "voltprompt"
+aider = "shelloise"
 ```
 
 ## 🤝 Contributing
 
-Contributions welcome! Please:
+Contributions welcome! Especially:
+
+- 🎨 New creature designs (pixel art sprites)
+- 🔌 New agent detectors
+- 🌈 Theme packs
 
 1. Fork the repo
 2. Create a feature branch (`git checkout -b feat/amazing-thing`)
@@ -114,4 +130,3 @@ Contributions welcome! Please:
 ## 📄 License
 
 [MIT](LICENSE) © 2026 Yan Matagne
-]]>
