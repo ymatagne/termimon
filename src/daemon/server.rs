@@ -19,17 +19,44 @@ pub struct AgentSnapshot {
     pub state: String,
     pub pane_id: String,
     pub pid: Option<u32>,
+    pub creature_species: String,
+    pub creature_name: String,
+    pub element_icon: String,
+    pub stage: u8,
+    pub xp: u64,
 }
 
 impl From<&TrackedAgent> for AgentSnapshot {
     fn from(a: &TrackedAgent) -> Self {
+        let species = crate::creatures::sprites::species_for_agent(&a.kind.to_string());
+        let creature_def = crate::creatures::registry::get_creature_def(species);
+        let (creature_name, element_icon) = match creature_def {
+            Some(def) => (def.evolution_names[0].to_string(), def.element.icon().to_string()),
+            None => ("Unknown".to_string(), "❓".to_string()),
+        };
         Self {
             kind: a.kind.to_string(),
             state: a.state.to_string(),
             pane_id: a.pane_id.clone(),
             pid: a.pid,
+            creature_species: species.to_string(),
+            creature_name,
+            element_icon,
+            stage: 1,
+            xp: 0,
         }
     }
+}
+
+/// Full status response sent over IPC as JSON.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct StatusResponse {
+    pub running: bool,
+    pub pid: u32,
+    pub started_at: String,
+    pub heartbeat_count: u64,
+    pub agents: Vec<AgentSnapshot>,
+    pub total_xp: u64,
 }
 
 /// Shared daemon state exposed to IPC clients.
@@ -103,14 +130,17 @@ async fn handle_client(stream: tokio::net::UnixStream, state: SharedState) -> Re
     let command = line.trim();
 
     let response = match command {
-        "status" => {
+        "status" | "status_json" => {
             let st = state.lock().map_err(|e| anyhow::anyhow!("lock: {e}"))?;
-            format!(
-                "  Uptime since: {}\n  Heartbeats: {}\n  Tracked agents: {}",
-                st.started_at.as_deref().unwrap_or("unknown"),
-                st.heartbeat_count,
-                st.agents.len()
-            )
+            let resp = StatusResponse {
+                running: true,
+                pid: std::process::id(),
+                started_at: st.started_at.clone().unwrap_or_default(),
+                heartbeat_count: st.heartbeat_count,
+                agents: st.agents.clone(),
+                total_xp: st.agents.iter().map(|a| a.xp).sum(),
+            };
+            serde_json::to_string(&resp)?
         }
         "agents" => {
             let st = state.lock().map_err(|e| anyhow::anyhow!("lock: {e}"))?;

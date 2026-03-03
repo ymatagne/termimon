@@ -118,7 +118,58 @@ pub async fn status() -> Result<()> {
         Some(pid) => {
             println!("🎮 TermiMon daemon is running (PID {pid})");
             match server::client_request("status").await {
-                Ok(response) => println!("{response}"),
+                Ok(response) => {
+                    // Try to parse as JSON StatusResponse
+                    match serde_json::from_str::<server::StatusResponse>(&response.trim()) {
+                        Ok(status) => {
+                            // Calculate uptime
+                            let uptime_str = if let Ok(started) = chrono::DateTime::parse_from_rfc3339(&status.started_at) {
+                                let elapsed = chrono::Utc::now().signed_duration_since(started);
+                                let secs = elapsed.num_seconds();
+                                if secs >= 3600 {
+                                    format!("{}h {}m {}s", secs / 3600, (secs % 3600) / 60, secs % 60)
+                                } else if secs >= 60 {
+                                    format!("{}m {}s", secs / 60, secs % 60)
+                                } else {
+                                    format!("{}s", secs)
+                                }
+                            } else {
+                                "unknown".to_string()
+                            };
+
+                            println!("  Uptime: {} | Heartbeats: {}", uptime_str, status.heartbeat_count);
+                            println!();
+
+                            if status.agents.is_empty() {
+                                println!("  No agents detected yet. Start an AI coding agent!");
+                            } else {
+                                for agent in &status.agents {
+                                    let pid_str = agent.pid.map(|p| format!(" pid:{}", p)).unwrap_or_default();
+                                    println!(
+                                        "  {} {} (Stage {}) — {} [{}]{}",
+                                        agent.element_icon,
+                                        agent.creature_name,
+                                        agent.stage,
+                                        agent.kind,
+                                        agent.state,
+                                        pid_str,
+                                    );
+                                }
+                            }
+
+                            println!();
+                            println!(
+                                "  {} agents tracked | {} XP earned",
+                                status.agents.len(),
+                                status.total_xp,
+                            );
+                        }
+                        Err(_) => {
+                            // Fallback: print raw response
+                            println!("{response}");
+                        }
+                    }
+                }
                 Err(_) => println!("  (could not connect to daemon socket)"),
             }
         }
