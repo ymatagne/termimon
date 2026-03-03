@@ -117,24 +117,36 @@ pub fn compute_cost_cents(input_tokens: u64, output_tokens: u64, model: &str) ->
 
 /// Find all Claude JSONL transcript files.
 pub fn find_transcript_files() -> Vec<PathBuf> {
-    let pattern = dirs::home_dir()
-        .map(|h| {
-            h.join(".claude")
-                .join("projects")
-                .join("**")
-                .join("*.jsonl")
-                .to_string_lossy()
-                .to_string()
-        })
-        .unwrap_or_default();
-
-    if pattern.is_empty() {
+    let home = match dirs::home_dir() {
+        Some(h) => h,
+        None => return Vec::new(),
+    };
+    let projects_dir = home.join(".claude").join("projects");
+    if !projects_dir.exists() {
         return Vec::new();
     }
 
-    glob::glob(&pattern)
-        .map(|paths| paths.filter_map(|p| p.ok()).collect())
-        .unwrap_or_default()
+    // Recursively find all .jsonl files under projects/
+    let mut files = Vec::new();
+    collect_jsonl_files(&projects_dir, &mut files, 0);
+    files
+}
+
+/// Recursively collect .jsonl files (max depth 5 to avoid infinite recursion)
+fn collect_jsonl_files(dir: &std::path::Path, files: &mut Vec<PathBuf>, depth: u32) {
+    if depth > 5 {
+        return;
+    }
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                collect_jsonl_files(&path, files, depth + 1);
+            } else if path.extension().and_then(|e| e.to_str()) == Some("jsonl") {
+                files.push(path);
+            }
+        }
+    }
 }
 
 /// Token usage extracted from a single JSONL line.
