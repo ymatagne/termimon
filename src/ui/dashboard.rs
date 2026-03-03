@@ -87,10 +87,13 @@ struct DashApp {
     team_selected_peer: usize,
     /// Selected creature index within peer.
     team_selected_creature: usize,
+    /// Active theme.
+    theme: &'static crate::theme::Theme,
 }
 
 impl DashApp {
     fn new() -> Self {
+        let theme = crate::theme::get_theme(&crate::config::load().general.theme);
         Self {
             status: None,
             selected: 0,
@@ -107,7 +110,25 @@ impl DashApp {
             show_team: false,
             team_selected_peer: 0,
             team_selected_creature: 0,
+            theme,
         }
+    }
+
+    /// Cycle to the next theme and save to config.
+    fn cycle_theme(&mut self) {
+        let names = crate::theme::THEME_NAMES;
+        let current_idx = names.iter().position(|&n| n == self.theme.name).unwrap_or(0);
+        let next_idx = (current_idx + 1) % names.len();
+        let next_name = names[next_idx];
+        self.theme = crate::theme::get_theme(next_name);
+        // Save to config
+        if let Ok(()) = crate::theme::set_theme(next_name) {
+            // saved
+        }
+        self.flash_msg = Some((
+            format!("🎨 Theme: {} — {}", self.theme.name, self.theme.description),
+            Instant::now(),
+        ));
     }
 
     /// Get filtered and sorted agents.
@@ -307,6 +328,9 @@ pub async fn run() -> Result<()> {
                                 app.filter_input = true;
                                 app.filter = Some(String::new());
                             }
+                            KeyCode::Char('T') => {
+                                app.cycle_theme();
+                            }
                             KeyCode::Char('t') => {
                                 app.show_team = !app.show_team;
                                 app.flash_msg = Some((
@@ -446,16 +470,16 @@ fn draw_dashboard(frame: &mut Frame, app: &DashApp) {
             // No team state — show placeholder
             let placeholder = Paragraph::new(vec![
                 Line::from(""),
-                Line::from(Span::styled("  ⚔️ Team Mode", Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD))),
+                Line::from(Span::styled("  ⚔️ Team Mode", Style::default().fg(app.theme.accent).add_modifier(Modifier::BOLD))),
                 Line::from(""),
-                Line::from(Span::styled("  Not connected to any team.", Style::default().fg(Color::DarkGray))),
+                Line::from(Span::styled("  Not connected to any team.", Style::default().fg(app.theme.muted))),
                 Line::from(""),
-                Line::from(Span::styled("  Host:  termimon team host", Style::default().fg(Color::Yellow))),
-                Line::from(Span::styled("  Join:  termimon team join <ip:port>", Style::default().fg(Color::Yellow))),
+                Line::from(Span::styled("  Host:  termimon team host", Style::default().fg(app.theme.highlight))),
+                Line::from(Span::styled("  Join:  termimon team join <ip:port>", Style::default().fg(app.theme.highlight))),
             ])
             .block(Block::default()
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(Color::Magenta))
+                .border_style(Style::default().fg(app.theme.accent))
                 .title(" ⚔️ TEAM MODE "));
             frame.render_widget(placeholder, team_area);
         }
@@ -463,26 +487,27 @@ fn draw_dashboard(frame: &mut Frame, app: &DashApp) {
 
     // Help overlay
     if app.show_help {
-        draw_help_overlay(frame, area);
+        draw_help_overlay(frame, area, app.theme);
     }
 }
 
-fn draw_help_overlay(frame: &mut Frame, area: Rect) {
+fn draw_help_overlay(frame: &mut Frame, area: Rect, theme: &crate::theme::Theme) {
     let help_text = vec![
-        Line::from(Span::styled("  TermiMon Dashboard Help", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))),
+        Line::from(Span::styled("  TermiMon Dashboard Help", Style::default().fg(theme.highlight).add_modifier(Modifier::BOLD))),
         Line::from(""),
-        Line::from(vec![Span::styled("  q/Esc  ", Style::default().fg(Color::Yellow)), Span::raw("Quit dashboard")]),
-        Line::from(vec![Span::styled("  ↑/↓    ", Style::default().fg(Color::Yellow)), Span::raw("Navigate agents")]),
-        Line::from(vec![Span::styled("  Enter  ", Style::default().fg(Color::Yellow)), Span::raw("Switch to agent's tmux pane")]),
-        Line::from(vec![Span::styled("  r      ", Style::default().fg(Color::Yellow)), Span::raw("Refresh/rescan")]),
-        Line::from(vec![Span::styled("  s      ", Style::default().fg(Color::Yellow)), Span::raw("Cycle sort mode (name/CPU/cost/XP)")]),
-        Line::from(vec![Span::styled("  d      ", Style::default().fg(Color::Yellow)), Span::raw("Kill selected agent (SIGTERM)")]),
-        Line::from(vec![Span::styled("  /      ", Style::default().fg(Color::Yellow)), Span::raw("Filter agents by name")]),
-        Line::from(vec![Span::styled("  t      ", Style::default().fg(Color::Yellow)), Span::raw("Toggle team view")]),
-        Line::from(vec![Span::styled("  b      ", Style::default().fg(Color::Yellow)), Span::raw("Challenge to battle (team view)")]),
-        Line::from(vec![Span::styled("  ?      ", Style::default().fg(Color::Yellow)), Span::raw("Show this help")]),
+        Line::from(vec![Span::styled("  q/Esc  ", Style::default().fg(theme.highlight)), Span::raw("Quit dashboard")]),
+        Line::from(vec![Span::styled("  ↑/↓    ", Style::default().fg(theme.highlight)), Span::raw("Navigate agents")]),
+        Line::from(vec![Span::styled("  Enter  ", Style::default().fg(theme.highlight)), Span::raw("Switch to agent's tmux pane")]),
+        Line::from(vec![Span::styled("  r      ", Style::default().fg(theme.highlight)), Span::raw("Refresh/rescan")]),
+        Line::from(vec![Span::styled("  s      ", Style::default().fg(theme.highlight)), Span::raw("Cycle sort mode (name/CPU/cost/XP)")]),
+        Line::from(vec![Span::styled("  d      ", Style::default().fg(theme.highlight)), Span::raw("Kill selected agent (SIGTERM)")]),
+        Line::from(vec![Span::styled("  /      ", Style::default().fg(theme.highlight)), Span::raw("Filter agents by name")]),
+        Line::from(vec![Span::styled("  t      ", Style::default().fg(theme.highlight)), Span::raw("Toggle team view")]),
+        Line::from(vec![Span::styled("  T      ", Style::default().fg(theme.highlight)), Span::raw("Cycle color theme")]),
+        Line::from(vec![Span::styled("  b      ", Style::default().fg(theme.highlight)), Span::raw("Challenge to battle (team view)")]),
+        Line::from(vec![Span::styled("  ?      ", Style::default().fg(theme.highlight)), Span::raw("Show this help")]),
         Line::from(""),
-        Line::from(Span::styled("  Press any key to close", Style::default().fg(Color::DarkGray))),
+        Line::from(Span::styled("  Press any key to close", Style::default().fg(theme.muted))),
     ];
 
     let w = 50u16.min(area.width.saturating_sub(4));
@@ -494,9 +519,9 @@ fn draw_help_overlay(frame: &mut Frame, area: Rect) {
     let help = Paragraph::new(help_text)
         .block(Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::Yellow))
+            .border_style(Style::default().fg(theme.highlight))
             .title(" Help ")
-            .style(Style::default().bg(Color::Rgb(20, 20, 30))));
+            .style(Style::default().bg(theme.bg)));
     frame.render_widget(Clear, popup_area);
     frame.render_widget(help, popup_area);
 }
@@ -526,17 +551,18 @@ fn draw_header(frame: &mut Frame, area: Rect, app: &DashApp) {
         " | ⚠ daemon not connected".to_string()
     };
 
+    let theme = app.theme;
     let header = Paragraph::new(Line::from(vec![
         Span::styled(
             &header_text,
-            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+            Style::default().fg(theme.highlight).add_modifier(Modifier::BOLD),
         ),
-        Span::styled(&status_info, Style::default().fg(Color::DarkGray)),
+        Span::styled(&status_info, Style::default().fg(theme.muted)),
     ]))
     .block(
         Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::Yellow))
+            .border_style(Style::default().fg(theme.highlight))
             .title_alignment(Alignment::Center),
     );
     frame.render_widget(header, area);
@@ -550,12 +576,12 @@ fn draw_body(frame: &mut Frame, area: Rect, app: &DashApp) {
                 Line::from(""),
                 Line::from(Span::styled(
                     format!("  ⚠ {error}"),
-                    Style::default().fg(Color::Red),
+                    Style::default().fg(app.theme.error),
                 )),
                 Line::from(""),
                 Line::from(Span::styled(
                     "  Start the daemon: termimon start",
-                    Style::default().fg(Color::DarkGray),
+                    Style::default().fg(app.theme.muted),
                 )),
             ])
             .block(Block::default().borders(Borders::ALL).title(" Status "));
@@ -579,12 +605,12 @@ fn draw_body(frame: &mut Frame, area: Rect, app: &DashApp) {
             Line::from(""),
             Line::from(Span::styled(
                 "  No agents detected yet...",
-                Style::default().fg(Color::DarkGray),
+                Style::default().fg(app.theme.muted),
             )),
             Line::from(""),
             Line::from(Span::styled(
                 "  Start an AI coding agent (Claude Code, Codex, aider) and it will appear here!",
-                Style::default().fg(Color::DarkGray),
+                Style::default().fg(app.theme.muted),
             )),
         ])
         .block(Block::default().borders(Borders::ALL).title(" Creatures "));
@@ -606,13 +632,14 @@ fn draw_body(frame: &mut Frame, area: Rect, app: &DashApp) {
 }
 
 fn draw_agent_list(frame: &mut Frame, area: Rect, app: &DashApp, _status: &StatusResponse) {
+    let theme = app.theme;
     let block = Block::default()
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::DarkGray))
+        .border_style(Style::default().fg(theme.border))
         .title(Span::styled(
             " AGENTS ",
             Style::default()
-                .fg(Color::Cyan)
+                .fg(theme.accent)
                 .add_modifier(Modifier::BOLD),
         ));
 
@@ -634,16 +661,16 @@ fn draw_agent_list(frame: &mut Frame, area: Rect, app: &DashApp, _status: &Statu
             Span::styled(
                 format!(" {indicator} "),
                 Style::default().fg(if is_selected {
-                    Color::Yellow
+                    theme.highlight
                 } else {
-                    Color::DarkGray
+                    theme.muted
                 }),
             ),
             Span::raw(&agent.element_icon),
             Span::styled(
                 format!(" {} ", agent.creature_name),
                 Style::default()
-                    .fg(if is_selected { Color::White } else { Color::Gray })
+                    .fg(if is_selected { theme.fg } else { Color::Gray })
                     .add_modifier(if is_selected {
                         Modifier::BOLD
                     } else {
@@ -664,7 +691,7 @@ fn draw_agent_list(frame: &mut Frame, area: Rect, app: &DashApp, _status: &Statu
                     .map(|s| {
                         Span::styled(
                             s.content.to_string(),
-                            s.style.bg(Color::Rgb(30, 30, 50)),
+                            s.style.bg(theme.selection_bg),
                         )
                     })
                     .collect::<Vec<_>>(),
@@ -680,13 +707,14 @@ fn draw_agent_list(frame: &mut Frame, area: Rect, app: &DashApp, _status: &Statu
 }
 
 fn draw_agent_detail(frame: &mut Frame, area: Rect, app: &DashApp, _status: &StatusResponse) {
+    let theme = app.theme;
     let block = Block::default()
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::DarkGray))
+        .border_style(Style::default().fg(theme.border))
         .title(Span::styled(
             " DETAIL ",
             Style::default()
-                .fg(Color::Cyan)
+                .fg(theme.accent)
                 .add_modifier(Modifier::BOLD),
         ));
 
@@ -747,6 +775,7 @@ fn draw_sprite_panel(frame: &mut Frame, area: Rect, app: &DashApp, agent: &Agent
 }
 
 fn draw_stats_panel(frame: &mut Frame, area: Rect, app: &DashApp, agent: &AgentSnapshot) {
+    let theme = app.theme;
     let creature_def = registry::get_creature_def(&agent.creature_species);
 
     let state_emoji = match agent.state.as_str() {
@@ -783,19 +812,19 @@ fn draw_stats_panel(frame: &mut Frame, area: Rect, app: &DashApp, agent: &AgentS
         Span::styled(
             format!(" {} ", agent.creature_name),
             Style::default()
-                .fg(Color::White)
+                .fg(theme.fg)
                 .add_modifier(Modifier::BOLD),
         ),
         Span::styled(
             format!("(Stage {})", agent.stage),
-            Style::default().fg(Color::DarkGray),
+            Style::default().fg(theme.muted),
         ),
     ]));
 
     // Agent kind + working dir
     lines.push(Line::from(Span::styled(
         format!("{} — {}", agent.kind, working_dir),
-        Style::default().fg(Color::DarkGray),
+        Style::default().fg(theme.muted),
     )));
 
     // State
@@ -811,24 +840,24 @@ fn draw_stats_panel(frame: &mut Frame, area: Rect, app: &DashApp, agent: &AgentS
 
     // CPU + MEM
     lines.push(Line::from(vec![
-        Span::styled("CPU: ", Style::default().fg(Color::DarkGray)),
+        Span::styled("CPU: ", Style::default().fg(theme.muted)),
         Span::styled(
             format!("{:.1}%", agent.cpu_pct),
-            Style::default().fg(Color::White),
+            Style::default().fg(theme.fg),
         ),
-        Span::styled("  MEM: ", Style::default().fg(Color::DarkGray)),
+        Span::styled("  MEM: ", Style::default().fg(theme.muted)),
         Span::styled(
             format!("{:.0}MB", agent.mem_mb),
-            Style::default().fg(Color::White),
+            Style::default().fg(theme.fg),
         ),
     ]));
 
     // XP bar
     lines.push(Line::from(vec![
-        Span::styled("XP: ", Style::default().fg(Color::DarkGray)),
+        Span::styled("XP: ", Style::default().fg(theme.muted)),
         Span::styled(
             format!("{}/100 ", agent.xp),
-            Style::default().fg(Color::Yellow),
+            Style::default().fg(theme.highlight),
         ),
         Span::raw(xp_bar),
     ]));
@@ -858,10 +887,10 @@ fn draw_stats_panel(frame: &mut Frame, area: Rect, app: &DashApp, agent: &AgentS
             let cost_str = crate::agents::cost::format_cost(cost_info.cost_cents);
 
             lines.push(Line::from(vec![
-                Span::styled("Tokens: ", Style::default().fg(Color::DarkGray)),
-                Span::styled(tokens_str, Style::default().fg(Color::White)),
-                Span::styled("  Cost: ", Style::default().fg(Color::DarkGray)),
-                Span::styled(cost_str, Style::default().fg(Color::Yellow)),
+                Span::styled("Tokens: ", Style::default().fg(theme.muted)),
+                Span::styled(tokens_str, Style::default().fg(theme.fg)),
+                Span::styled("  Cost: ", Style::default().fg(theme.muted)),
+                Span::styled(cost_str, Style::default().fg(theme.highlight)),
             ]));
         } else if status.total_cost_cents > 0 {
             // Show total Claude cost as fallback
@@ -875,10 +904,10 @@ fn draw_stats_panel(frame: &mut Frame, area: Rect, app: &DashApp, agent: &AgentS
             };
             let cost_str = crate::agents::cost::format_cost(status.total_cost_cents);
             lines.push(Line::from(vec![
-                Span::styled("All Claude: ", Style::default().fg(Color::DarkGray)),
-                Span::styled(tokens_str, Style::default().fg(Color::White)),
-                Span::styled("  Cost: ", Style::default().fg(Color::DarkGray)),
-                Span::styled(cost_str, Style::default().fg(Color::Yellow)),
+                Span::styled("All Claude: ", Style::default().fg(theme.muted)),
+                Span::styled(tokens_str, Style::default().fg(theme.fg)),
+                Span::styled("  Cost: ", Style::default().fg(theme.muted)),
+                Span::styled(cost_str, Style::default().fg(theme.highlight)),
             ]));
         }
     }
@@ -887,7 +916,7 @@ fn draw_stats_panel(frame: &mut Frame, area: Rect, app: &DashApp, agent: &AgentS
     if let Some(pid) = agent.pid {
         lines.push(Line::from(Span::styled(
             format!("PID: {pid}"),
-            Style::default().fg(Color::DarkGray),
+            Style::default().fg(theme.muted),
         )));
     }
 
@@ -896,7 +925,7 @@ fn draw_stats_panel(frame: &mut Frame, area: Rect, app: &DashApp, agent: &AgentS
     lines.push(Line::from(Span::styled(
         desc.to_string(),
         Style::default()
-            .fg(Color::DarkGray)
+            .fg(theme.muted)
             .add_modifier(Modifier::ITALIC),
     )));
 
@@ -905,13 +934,14 @@ fn draw_stats_panel(frame: &mut Frame, area: Rect, app: &DashApp, agent: &AgentS
 }
 
 fn draw_activity_feed(frame: &mut Frame, area: Rect, app: &DashApp, agent: &AgentSnapshot) {
+    let theme = app.theme;
     let block = Block::default()
         .borders(Borders::TOP)
-        .border_style(Style::default().fg(Color::DarkGray))
+        .border_style(Style::default().fg(theme.border))
         .title(Span::styled(
             " ACTIVITY ",
             Style::default()
-                .fg(Color::Cyan)
+                .fg(theme.accent)
                 .add_modifier(Modifier::BOLD),
         ));
 
@@ -961,19 +991,19 @@ fn draw_activity_feed(frame: &mut Frame, area: Rect, app: &DashApp, agent: &Agen
 
             let evt_color = match evt.event_type {
                 crate::agents::activity::EventType::FileRead => Color::Blue,
-                crate::agents::activity::EventType::FileWrite => Color::Green,
-                crate::agents::activity::EventType::Command => Color::Yellow,
-                crate::agents::activity::EventType::Error => Color::Red,
-                crate::agents::activity::EventType::TokenUsage => Color::DarkGray,
+                crate::agents::activity::EventType::FileWrite => theme.success,
+                crate::agents::activity::EventType::Command => theme.highlight,
+                crate::agents::activity::EventType::Error => theme.error,
+                crate::agents::activity::EventType::TokenUsage => theme.muted,
                 crate::agents::activity::EventType::Thinking => Color::Magenta,
-                crate::agents::activity::EventType::Responding => Color::Cyan,
+                crate::agents::activity::EventType::Responding => theme.accent,
                 _ => Color::Gray,
             };
 
             lines.push(Line::from(vec![
                 Span::styled(
                     format!("  {time_str} "),
-                    Style::default().fg(Color::DarkGray),
+                    Style::default().fg(theme.muted),
                 ),
                 Span::styled(
                     evt.message.clone(),
@@ -1002,7 +1032,7 @@ fn draw_activity_feed(frame: &mut Frame, area: Rect, app: &DashApp, agent: &Agen
         lines.push(Line::from(vec![
             Span::styled(
                 format!("  {time_str} "),
-                Style::default().fg(Color::DarkGray),
+                Style::default().fg(theme.muted),
             ),
             Span::styled(
                 state_desc.to_string(),
@@ -1016,6 +1046,7 @@ fn draw_activity_feed(frame: &mut Frame, area: Rect, app: &DashApp, agent: &Agen
 }
 
 fn draw_footer(frame: &mut Frame, area: Rect, app: &DashApp) {
+    let theme = app.theme;
     // Check for flash messages
     let flash = app
         .flash_msg
@@ -1024,7 +1055,7 @@ fn draw_footer(frame: &mut Frame, area: Rect, app: &DashApp) {
             Span::styled(
                 format!("  ⚠ {msg}  "),
                 Style::default()
-                    .fg(Color::Yellow)
+                    .fg(theme.highlight)
                     .add_modifier(Modifier::BOLD),
             )
         });
@@ -1032,10 +1063,10 @@ fn draw_footer(frame: &mut Frame, area: Rect, app: &DashApp) {
     let controls = if app.filter_input {
         let filter_str = app.filter.as_deref().unwrap_or("");
         Paragraph::new(Line::from(vec![
-            Span::styled(" Filter: ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
-            Span::styled(filter_str.to_string(), Style::default().fg(Color::White)),
-            Span::styled("▌", Style::default().fg(Color::Yellow)),
-            Span::styled("  (Enter to confirm, Esc to cancel)", Style::default().fg(Color::DarkGray)),
+            Span::styled(" Filter: ", Style::default().fg(theme.highlight).add_modifier(Modifier::BOLD)),
+            Span::styled(filter_str.to_string(), Style::default().fg(theme.fg)),
+            Span::styled("▌", Style::default().fg(theme.highlight)),
+            Span::styled("  (Enter to confirm, Esc to cancel)", Style::default().fg(theme.muted)),
         ]))
     } else if let Some(flash_span) = flash {
         Paragraph::new(Line::from(vec![flash_span]))
@@ -1043,32 +1074,32 @@ fn draw_footer(frame: &mut Frame, area: Rect, app: &DashApp) {
         let sort_label = format!("[sort:{}] ", app.sort_mode.label());
         let filter_label = app.filter.as_ref().map(|f| format!("[filter:{}] ", f)).unwrap_or_default();
         Paragraph::new(Line::from(vec![
-            Span::styled(" q", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled(" q", Style::default().fg(theme.highlight).add_modifier(Modifier::BOLD)),
             Span::raw(" quit  "),
-            Span::styled("↑↓", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled("↑↓", Style::default().fg(theme.highlight).add_modifier(Modifier::BOLD)),
             Span::raw(" nav  "),
-            Span::styled("⏎", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled("⏎", Style::default().fg(theme.highlight).add_modifier(Modifier::BOLD)),
             Span::raw(" switch  "),
-            Span::styled("s", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled("s", Style::default().fg(theme.highlight).add_modifier(Modifier::BOLD)),
             Span::raw(" sort  "),
-            Span::styled("d", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled("d", Style::default().fg(theme.highlight).add_modifier(Modifier::BOLD)),
             Span::raw(" kill  "),
-            Span::styled("/", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled("/", Style::default().fg(theme.highlight).add_modifier(Modifier::BOLD)),
             Span::raw(" filter  "),
-            Span::styled("t", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled("t", Style::default().fg(theme.highlight).add_modifier(Modifier::BOLD)),
             Span::raw(" team  "),
-            Span::styled("b", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
-            Span::raw(" battle  "),
-            Span::styled("?", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled("T", Style::default().fg(theme.highlight).add_modifier(Modifier::BOLD)),
+            Span::raw(" theme  "),
+            Span::styled("?", Style::default().fg(theme.highlight).add_modifier(Modifier::BOLD)),
             Span::raw(" help  "),
-            Span::styled(format!("{sort_label}{filter_label}"), Style::default().fg(Color::DarkGray)),
+            Span::styled(format!("{sort_label}{filter_label}"), Style::default().fg(theme.muted)),
         ]))
     };
 
     let footer = controls.block(
         Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::DarkGray))
+            .border_style(Style::default().fg(theme.border))
             .title(" Controls "),
     );
     frame.render_widget(footer, area);
@@ -1160,6 +1191,8 @@ fn render_sprite_ratatui<'a>(
 }
 
 fn get_state_color(state: &str) -> Color {
+    // Note: This uses hardcoded colors as a fallback for contexts without theme access.
+    // The themed version is get_state_color_themed.
     match state {
         "idle" => Color::Green,
         "typing" => Color::Cyan,

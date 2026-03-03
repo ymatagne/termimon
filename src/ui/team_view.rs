@@ -11,13 +11,14 @@ use crate::team::protocol::CreatureSync;
 
 /// Draw the team view overlay/panel.
 pub fn draw_team_view(frame: &mut Frame, area: Rect, team_state: &SharedTeamState, selected_peer: usize, selected_creature: usize) {
+    let theme = crate::theme::get_theme(&crate::config::load().general.theme);
     let block = Block::default()
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Magenta))
+        .border_style(Style::default().fg(theme.accent))
         .title(Span::styled(
             " ⚔️ TEAM MODE ",
             Style::default()
-                .fg(Color::Magenta)
+                .fg(theme.accent)
                 .add_modifier(Modifier::BOLD),
         ));
 
@@ -34,21 +35,21 @@ pub fn draw_team_view(frame: &mut Frame, area: Rect, team_state: &SharedTeamStat
             Line::from(""),
             Line::from(Span::styled(
                 "  Not connected to any team.",
-                Style::default().fg(Color::DarkGray),
+                Style::default().fg(theme.muted),
             )),
             Line::from(""),
             Line::from(Span::styled(
                 "  Host:  termimon team host",
-                Style::default().fg(Color::Yellow),
+                Style::default().fg(theme.highlight),
             )),
             Line::from(Span::styled(
                 "  Join:  termimon team join <ip:port>",
-                Style::default().fg(Color::Yellow),
+                Style::default().fg(theme.highlight),
             )),
             Line::from(""),
             Line::from(Span::styled(
                 "  Press 't' to close team view",
-                Style::default().fg(Color::DarkGray),
+                Style::default().fg(theme.muted),
             )),
         ]);
         frame.render_widget(msg, inner);
@@ -64,8 +65,8 @@ pub fn draw_team_view(frame: &mut Frame, area: Rect, team_state: &SharedTeamStat
         ])
         .split(inner);
 
-    draw_peers_panel(frame, chunks[0], &ts, selected_peer, selected_creature);
-    draw_battle_log(frame, chunks[1], &ts.battle_log);
+    draw_peers_panel(frame, chunks[0], &ts, selected_peer, selected_creature, theme);
+    draw_battle_log(frame, chunks[1], &ts.battle_log, theme);
 }
 
 fn draw_peers_panel(
@@ -74,16 +75,17 @@ fn draw_peers_panel(
     ts: &crate::team::TeamState,
     selected_peer: usize,
     selected_creature: usize,
+    theme: &crate::theme::Theme,
 ) {
     let block = Block::default()
         .borders(Borders::RIGHT)
-        .border_style(Style::default().fg(Color::DarkGray))
+        .border_style(Style::default().fg(theme.muted))
         .title(Span::styled(
             format!(
                 " Peers ({}) ",
                 ts.registry.peers.len() + 1 // +1 for self
             ),
-            Style::default().fg(Color::Cyan),
+            Style::default().fg(theme.accent),
         ));
 
     let inner = block.inner(area);
@@ -96,12 +98,12 @@ fn draw_peers_panel(
         Span::styled(
             format!(" 👤 {} ", ts.local_name),
             Style::default()
-                .fg(Color::Yellow)
+                .fg(theme.highlight)
                 .add_modifier(Modifier::BOLD),
         ),
         Span::styled(
             if ts.hosting { "(host)" } else { "(client)" },
-            Style::default().fg(Color::DarkGray),
+            Style::default().fg(theme.muted),
         ),
     ]));
 
@@ -118,11 +120,11 @@ fn draw_peers_panel(
                     Span::raw(icon),
                     Span::styled(
                         format!(" {} ", name),
-                        Style::default().fg(Color::White),
+                        Style::default().fg(theme.fg),
                     ),
                     Span::styled(
                         format!("Lv{} ", xp),
-                        Style::default().fg(Color::Yellow),
+                        Style::default().fg(theme.highlight),
                     ),
                     Span::styled(
                         format!("[{}]", state),
@@ -145,7 +147,7 @@ fn draw_peers_panel(
             Span::styled(
                 format!("{indicator}👤 {} ", peer_name),
                 Style::default()
-                    .fg(if is_selected { Color::Magenta } else { Color::Cyan })
+                    .fg(if is_selected { theme.accent } else { theme.accent })
                     .add_modifier(if is_selected { Modifier::BOLD } else { Modifier::empty() }),
             ),
         ]));
@@ -159,20 +161,20 @@ fn draw_peers_panel(
                 lines.push(Line::from(vec![
                     Span::styled(
                         format!("  {c_indicator}"),
-                        Style::default().fg(if is_creature_selected { Color::Yellow } else { Color::DarkGray }),
+                        Style::default().fg(if is_creature_selected { theme.highlight } else { theme.muted }),
                     ),
                     Span::raw(element_icon),
                     Span::styled(
                         format!(" {} ", creature.name),
-                        Style::default().fg(if is_creature_selected { Color::White } else { Color::Gray }),
+                        Style::default().fg(if is_creature_selected { theme.fg } else { Color::Gray }),
                     ),
                     Span::styled(
                         format!("S{} ", creature.stage),
-                        Style::default().fg(Color::Yellow),
+                        Style::default().fg(theme.highlight),
                     ),
                     Span::styled(
                         format!("XP:{} ", creature.xp),
-                        Style::default().fg(Color::DarkGray),
+                        Style::default().fg(theme.muted),
                     ),
                     Span::styled(
                         format!("[{}]", creature.state),
@@ -184,7 +186,7 @@ fn draw_peers_panel(
             if peer.creatures.is_empty() {
                 lines.push(Line::from(Span::styled(
                     "   (no creatures)",
-                    Style::default().fg(Color::DarkGray),
+                    Style::default().fg(theme.muted),
                 )));
             }
         }
@@ -195,7 +197,7 @@ fn draw_peers_panel(
     if peer_names.is_empty() {
         lines.push(Line::from(Span::styled(
             " Waiting for peers to connect...",
-            Style::default().fg(Color::DarkGray),
+            Style::default().fg(theme.muted),
         )));
     }
 
@@ -203,11 +205,11 @@ fn draw_peers_panel(
     frame.render_widget(widget, inner);
 }
 
-fn draw_battle_log(frame: &mut Frame, area: Rect, battle_log: &[BattleResult]) {
+fn draw_battle_log(frame: &mut Frame, area: Rect, battle_log: &[BattleResult], theme: &crate::theme::Theme) {
     let block = Block::default()
         .title(Span::styled(
             " ⚔️ Battles ",
-            Style::default().fg(Color::Red),
+            Style::default().fg(theme.error),
         ));
 
     let inner = block.inner(area);
@@ -219,12 +221,12 @@ fn draw_battle_log(frame: &mut Frame, area: Rect, battle_log: &[BattleResult]) {
         lines.push(Line::from(""));
         lines.push(Line::from(Span::styled(
             " No battles yet.",
-            Style::default().fg(Color::DarkGray),
+            Style::default().fg(theme.muted),
         )));
         lines.push(Line::from(""));
         lines.push(Line::from(Span::styled(
             " Press 'b' to challenge!",
-            Style::default().fg(Color::DarkGray),
+            Style::default().fg(theme.muted),
         )));
     } else {
         // Show last few battles
@@ -235,17 +237,17 @@ fn draw_battle_log(frame: &mut Frame, area: Rect, battle_log: &[BattleResult]) {
                 Span::styled(
                     &result.winner,
                     Style::default()
-                        .fg(Color::Green)
+                        .fg(theme.success)
                         .add_modifier(Modifier::BOLD),
                 ),
-                Span::styled(" beat ", Style::default().fg(Color::DarkGray)),
+                Span::styled(" beat ", Style::default().fg(theme.muted)),
                 Span::styled(
                     &result.loser,
-                    Style::default().fg(Color::Red),
+                    Style::default().fg(theme.error),
                 ),
                 Span::styled(
                     format!(" ({}R)", result.rounds.len()),
-                    Style::default().fg(Color::DarkGray),
+                    Style::default().fg(theme.muted),
                 ),
             ]));
 
@@ -253,7 +255,7 @@ fn draw_battle_log(frame: &mut Frame, area: Rect, battle_log: &[BattleResult]) {
             if let Some(last) = result.rounds.last() {
                 lines.push(Line::from(Span::styled(
                     format!("  └ {}", last.message),
-                    Style::default().fg(Color::DarkGray),
+                    Style::default().fg(theme.muted),
                 )));
             }
             lines.push(Line::from(""));
