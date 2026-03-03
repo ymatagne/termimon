@@ -24,6 +24,27 @@ const CREATURES: &[CreatureDef] = &[
         default_agent: "aider",
         evolution_names: ["Shelloise", "Torrentoise", "Tsunamoise"],
     },
+    CreatureDef {
+        name: "rustacean",
+        element: Element::Rust,
+        description: "A fearless crab forged in Cursor's rapid-fire completions.",
+        default_agent: "cursor",
+        evolution_names: ["Rustacean", "Ferrocrab", "Oxidragon"],
+    },
+    CreatureDef {
+        name: "pythorn",
+        element: Element::Grass,
+        description: "A vine creature that grows alongside Copilot and Continue sessions.",
+        default_agent: "copilot",
+        evolution_names: ["Pythorn", "Vineconda", "Thornviper"],
+    },
+    CreatureDef {
+        name: "gitbat",
+        element: Element::Dark,
+        description: "A shadowy bat that emerges from unknown agent processes.",
+        default_agent: "unknown",
+        evolution_names: ["Gitbat", "Commitwing", "Mergefiend"],
+    },
 ];
 
 pub fn get_creature_def(name: &str) -> Option<&'static CreatureDef> {

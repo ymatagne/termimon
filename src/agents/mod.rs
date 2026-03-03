@@ -3,9 +3,11 @@
 //! Detects AI coding agents running in tmux panes and tracks their state
 //! through a finite state machine.
 
+pub mod activity;
 pub mod aider;
 pub mod claude;
 pub mod codex;
+pub mod cost;
 pub mod detector;
 pub mod generic;
 pub mod identity;
@@ -20,6 +22,9 @@ pub enum AgentKind {
     Claude,
     Codex,
     Aider,
+    Cursor,
+    Copilot,
+    Continue,
     Generic,
     Unknown,
 }
@@ -27,11 +32,14 @@ pub enum AgentKind {
 impl fmt::Display for AgentKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            AgentKind::Claude => write!(f, "Claude Code"),
-            AgentKind::Codex => write!(f, "Codex"),
-            AgentKind::Aider => write!(f, "aider"),
-            AgentKind::Generic => write!(f, "Agent"),
-            AgentKind::Unknown => write!(f, "Unknown"),
+            AgentKind::Claude   => write!(f, "Claude Code"),
+            AgentKind::Codex    => write!(f, "Codex"),
+            AgentKind::Aider    => write!(f, "aider"),
+            AgentKind::Cursor   => write!(f, "Cursor"),
+            AgentKind::Copilot  => write!(f, "Copilot"),
+            AgentKind::Continue => write!(f, "Continue"),
+            AgentKind::Generic  => write!(f, "Agent"),
+            AgentKind::Unknown  => write!(f, "Unknown"),
         }
     }
 }

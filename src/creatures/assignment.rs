@@ -27,6 +27,10 @@ pub fn default_creature_for_agent(agent: &str) -> Option<&'static str> {
         Some("voltprompt")
     } else if agent_lower.contains("aider") {
         Some("shelloise")
+    } else if agent_lower.contains("cursor") {
+        Some("rustacean")
+    } else if agent_lower.contains("copilot") || agent_lower.contains("continue") {
+        Some("pythorn")
     } else {
         // Check the registry's default_agent field as fallback
         registry::creature_for_agent(agent).map(|def| def.name)
@@ -61,9 +65,13 @@ pub fn resolve_creature(
 /// All default agent→creature assignments, for display/config generation.
 pub fn default_assignments() -> Vec<(&'static str, &'static str, &'static str)> {
     vec![
-        ("claude", "embercli",   "🔥"),
-        ("codex",  "voltprompt", "⚡"),
-        ("aider",  "shelloise",  "💧"),
+        ("claude",   "embercli",   "🔥"),
+        ("codex",    "voltprompt", "⚡"),
+        ("aider",    "shelloise",  "💧"),
+        ("cursor",   "rustacean",  "🦀"),
+        ("copilot",  "pythorn",    "🌿"),
+        ("continue", "pythorn",    "🌿"),
+        ("unknown",  "gitbat",     "🦇"),
     ]
 }
 

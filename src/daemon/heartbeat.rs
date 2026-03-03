@@ -16,7 +16,7 @@ const HEARTBEAT_INTERVAL_MS: u64 = 2000;
 
 /// Known agent process names to search for in process trees.
 const AGENT_PROCESS_NAMES: &[&str] = &[
-    "claude", "codex", "aider", "copilot", "cursor", "gpt", "llm",
+    "claude", "codex", "aider", "copilot", "cursor", "continue", "cline", "gpt", "llm",
 ];
 
 /// Run the heartbeat loop until shutdown.
@@ -149,6 +149,12 @@ fn tick(
             Some(AgentKind::Codex)
         } else if comm_lower == "aider" || proc.comm.contains("/aider") {
             Some(AgentKind::Aider)
+        } else if comm_lower.contains("cursor") && !comm_lower.contains("helper") && !comm_lower.contains("crashpad") {
+            Some(AgentKind::Cursor)
+        } else if comm_lower.contains("copilot") {
+            Some(AgentKind::Copilot)
+        } else if comm_lower.contains("continue") || comm_lower.contains("cline") {
+            Some(AgentKind::Continue)
         } else {
             None
         };
@@ -280,10 +286,13 @@ fn update_status(
 
 fn agent_icon(kind: AgentKind) -> String {
     match kind {
-        AgentKind::Claude => "🔥".to_string(),
-        AgentKind::Codex => "⚡".to_string(),
-        AgentKind::Aider => "💧".to_string(),
-        AgentKind::Generic => "🤖".to_string(),
-        AgentKind::Unknown => "❓".to_string(),
+        AgentKind::Claude   => "🔥".to_string(),
+        AgentKind::Codex    => "⚡".to_string(),
+        AgentKind::Aider    => "💧".to_string(),
+        AgentKind::Cursor   => "🦀".to_string(),
+        AgentKind::Copilot  => "🌿".to_string(),
+        AgentKind::Continue => "🌿".to_string(),
+        AgentKind::Generic  => "🤖".to_string(),
+        AgentKind::Unknown  => "❓".to_string(),
     }
 }
