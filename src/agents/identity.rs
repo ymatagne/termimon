@@ -34,23 +34,18 @@ pub fn compute_agent_id(agent_kind: &str, working_dir: Option<&str>) -> String {
 }
 
 /// Compute agent ID with PID fallback when working dir is useless.
-/// Uses kind + working_dir for stable identity across restarts.
-/// Only falls back to PID when working dir is unknown (not stable, but unique per instance).
+/// Compute agent ID using kind + working_dir + PID for uniqueness.
+/// Always includes PID to differentiate multiple agents in the same directory.
+/// Not stable across restarts, but creature bindings persist by ID in creatures.json.
 pub fn compute_agent_id_with_pid(agent_kind: &str, working_dir: Option<&str>, pid: Option<u32>) -> String {
     let wd = working_dir.unwrap_or("/");
-    if wd == "/" || wd == "unknown" || wd.is_empty() {
-        // Use PID as differentiator — not stable across restarts but unique per instance
-        let input = format!("{}:pid:{}", agent_kind, pid.unwrap_or(0));
-        let mut hash: u64 = 0xcbf29ce484222325;
-        for byte in input.bytes() {
-            hash ^= byte as u64;
-            hash = hash.wrapping_mul(0x100000001b3);
-        }
-        format!("{:08x}", hash as u32)
-    } else {
-        // Stable: kind + working dir (survives restarts)
-        compute_agent_id(agent_kind, Some(wd))
+    let input = format!("{}:{}:pid:{}", agent_kind, wd, pid.unwrap_or(0));
+    let mut hash: u64 = 0xcbf29ce484222325;
+    for byte in input.bytes() {
+        hash ^= byte as u64;
+        hash = hash.wrapping_mul(0x100000001b3);
     }
+    format!("{:08x}", hash as u32)
 }
 
 fn bindings_path() -> PathBuf {
