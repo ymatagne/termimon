@@ -276,6 +276,18 @@ fn tick(
     });
 
     // Post-pass: compute CPU/mem sums, working dir, and agent identity for all tracked agents
+    // Load Claude session → project mapping for working dir assignment
+    let claude_projects = detector::load_claude_session_projects();
+    let mut used_projects: std::collections::HashSet<String> = std::collections::HashSet::new();
+    // Collect already-assigned working dirs
+    for agent in tracked.values() {
+        if let Some(ref wd) = agent.working_dir {
+            if wd != "/" {
+                used_projects.insert(wd.clone());
+            }
+        }
+    }
+
     for agent in tracked.values_mut() {
         if let Some(pid) = agent.pid {
             // Sum CPU and memory across all descendant processes
@@ -284,8 +296,22 @@ fn tick(
             agent.mem_mb = descendants.iter().map(|p| p.mem_mb).sum();
 
             // Detect working directory on first discovery (cache it)
-            if agent.working_dir.is_none() {
-                agent.working_dir = detector::get_working_dir(pid);
+            if agent.working_dir.is_none() || agent.working_dir.as_deref() == Some("/") {
+                let wd = detector::get_working_dir(pid);
+                if wd.as_deref() != Some("/") && wd.is_some() {
+                    agent.working_dir = wd;
+                } else if agent.kind == AgentKind::Claude {
+                    // Fallback: assign from Claude history.jsonl
+                    // Find a project dir not yet assigned to another agent
+                    let unique_projects: Vec<String> = claude_projects.values()
+                        .filter(|p| !used_projects.contains(*p))
+                        .cloned()
+                        .collect();
+                    if let Some(project) = unique_projects.first() {
+                        agent.working_dir = Some(project.clone());
+                        used_projects.insert(project.clone());
+                    }
+                }
             }
 
             // Compute stable agent identity

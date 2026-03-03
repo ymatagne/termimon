@@ -74,12 +74,6 @@ pub fn get_working_dir(pid: u32) -> Option<String> {
         }
     }
 
-    // Strategy 4: For Claude agents, find the most recent JSONL with this session
-    // and read the `cwd` field from it
-    if let Some(dir) = get_working_dir_from_claude_jsonl(pid) {
-        return Some(dir);
-    }
-
     None
 }
 
@@ -112,45 +106,44 @@ fn get_ppid(pid: u32) -> Option<u32> {
     String::from_utf8_lossy(&output.stdout).trim().parse().ok()
 }
 
-/// Read working directory from Claude Code's JSONL transcripts.
-/// JSONL events have a `cwd` field with the real project directory.
-fn get_working_dir_from_claude_jsonl(pid: u32) -> Option<String> {
-    // Find the most recently modified JSONL files
-    let home = dirs::home_dir()?;
-    let projects_dir = home.join(".claude").join("projects");
-    if !projects_dir.exists() {
-        return None;
+/// Read working directories from Claude Code's history.jsonl.
+/// Returns a map of session_id → project_dir for all known sessions.
+pub fn load_claude_session_projects() -> HashMap<String, String> {
+    let mut map = HashMap::new();
+    let home = match dirs::home_dir() {
+        Some(h) => h,
+        None => return map,
+    };
+    let history_path = home.join(".claude").join("history.jsonl");
+    if !history_path.exists() {
+        return map;
     }
 
-    // Read all JSONL files, sorted by modification time (newest first)
-    let pattern = projects_dir.join("*").join("*.jsonl").to_string_lossy().to_string();
-    let mut files: Vec<std::path::PathBuf> = glob::glob(&pattern)
-        .ok()?
-        .filter_map(|p| p.ok())
-        .collect();
-
-    // Sort by modification time, newest first
-    files.sort_by(|a, b| {
-        let a_time = a.metadata().and_then(|m| m.modified()).unwrap_or(std::time::SystemTime::UNIX_EPOCH);
-        let b_time = b.metadata().and_then(|m| m.modified()).unwrap_or(std::time::SystemTime::UNIX_EPOCH);
-        b_time.cmp(&a_time)
-    });
-
-    // Check the first few files for a cwd field
-    for file in files.iter().take(10) {
-        if let Ok(content) = std::fs::read_to_string(file) {
-            for line in content.lines().take(5) {
-                if let Ok(v) = serde_json::from_str::<serde_json::Value>(line) {
-                    if let Some(cwd) = v.get("cwd").and_then(|c| c.as_str()) {
-                        if !cwd.is_empty() && cwd != "/" {
-                            return Some(cwd.to_string());
-                        }
+    if let Ok(content) = std::fs::read_to_string(&history_path) {
+        for line in content.lines().rev() {  // reverse: most recent first
+            if let Ok(v) = serde_json::from_str::<serde_json::Value>(line) {
+                if let (Some(sid), Some(project)) = (
+                    v.get("sessionId").and_then(|s| s.as_str()),
+                    v.get("project").and_then(|p| p.as_str()),
+                ) {
+                    if !project.is_empty() && project != "/" {
+                        map.entry(sid.to_string()).or_insert_with(|| project.to_string());
                     }
                 }
             }
         }
     }
-    None
+    map
+}
+
+/// Get unique project directories for currently active Claude sessions.
+/// Scans history.jsonl to find which projects have recent activity.
+pub fn get_active_claude_projects() -> Vec<String> {
+    let map = load_claude_session_projects();
+    let mut projects: Vec<String> = map.values().cloned().collect();
+    projects.sort();
+    projects.dedup();
+    projects
 }
 
 /// Build a pid → children mapping.
