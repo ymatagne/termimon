@@ -3,13 +3,17 @@
 //! Your AI agents, alive in the terminal.
 //! Pixel creature companions for tmux that react to what your AI coding agents are doing.
 
+#[allow(dead_code)]
 mod agents;
 mod config;
+#[allow(dead_code)]
 mod creatures;
 mod daemon;
+#[allow(dead_code)]
 mod render;
 mod state;
 mod stats;
+#[allow(dead_code)]
 mod tmux;
 mod ui;
 

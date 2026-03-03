@@ -204,6 +204,7 @@ pub fn load() -> Config {
 }
 
 /// Save configuration to disk
+#[allow(dead_code)]
 pub fn save(config: &Config) -> std::io::Result<()> {
     let dir = config_dir();
     std::fs::create_dir_all(&dir)?;

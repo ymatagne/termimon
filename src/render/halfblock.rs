@@ -137,7 +137,7 @@ pub fn render_status_compact(
     name: &str,
     state: &str,
     show_xp: bool,
-    xp: u64,
+    _xp: u64,
     level: u32,
 ) -> String {
     if show_xp {

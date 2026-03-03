@@ -3,7 +3,6 @@
 //! Measures agent output by analyzing git changes in the agent's working directory:
 //! files changed, lines added/removed, build success rate.
 
-use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;

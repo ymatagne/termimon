@@ -24,7 +24,7 @@ const AGENT_PROCESS_NAMES: &[&str] = &[
 /// Run the heartbeat loop until shutdown.
 pub async fn run_heartbeat(mut shutdown: watch::Receiver<bool>) {
     let registry = DetectorRegistry::new();
-    let config = config::load();
+    let _config = config::load();
     let mut tracked: HashMap<String, TrackedAgent> = HashMap::new();
     let mut cycle: u64 = 0;
 
@@ -363,7 +363,7 @@ fn tick(
 
 fn update_status(
     tracked: &HashMap<String, TrackedAgent>,
-    config: &config::Config,
+    _config: &config::Config,
     cycle: u64,
 ) -> anyhow::Result<()> {
     if tracked.is_empty() {
