@@ -445,10 +445,10 @@ fn draw_agent_detail(frame: &mut Frame, area: Rect, app: &DashApp, status: &Stat
         .split(detail_chunks[0]);
 
     draw_sprite_panel(frame, top_chunks[0], app, agent);
-    draw_stats_panel(frame, top_chunks[1], agent);
+    draw_stats_panel(frame, top_chunks[1], app, agent);
 
     // ── Bottom: activity feed ──
-    draw_activity_feed(frame, detail_chunks[1], agent);
+    draw_activity_feed(frame, detail_chunks[1], app, agent);
 }
 
 fn draw_sprite_panel(frame: &mut Frame, area: Rect, app: &DashApp, agent: &AgentSnapshot) {
@@ -473,7 +473,7 @@ fn draw_sprite_panel(frame: &mut Frame, area: Rect, app: &DashApp, agent: &Agent
     frame.render_widget(sprite_widget, area);
 }
 
-fn draw_stats_panel(frame: &mut Frame, area: Rect, agent: &AgentSnapshot) {
+fn draw_stats_panel(frame: &mut Frame, area: Rect, app: &DashApp, agent: &AgentSnapshot) {
     let creature_def = registry::get_creature_def(&agent.creature_species);
 
     let state_emoji = match agent.state.as_str() {
@@ -560,18 +560,30 @@ fn draw_stats_panel(frame: &mut Frame, area: Rect, agent: &AgentSnapshot) {
         Span::raw(xp_bar),
     ]));
 
+    // Tokens and cost (from cost tracker)
+    if let Some(ref status) = app.status {
+        if let Some(cost_info) = status.costs.iter().find(|c| c.agent_id == agent.agent_id) {
+            let total_tokens = cost_info.input_tokens + cost_info.output_tokens;
+            let tokens_str = if total_tokens >= 1000 {
+                format!("{:.1}K", total_tokens as f64 / 1000.0)
+            } else {
+                format!("{total_tokens}")
+            };
+            let cost_str = crate::agents::cost::format_cost(cost_info.cost_cents);
+
+            lines.push(Line::from(vec![
+                Span::styled("Tokens: ", Style::default().fg(Color::DarkGray)),
+                Span::styled(tokens_str, Style::default().fg(Color::White)),
+                Span::styled("  Cost: ", Style::default().fg(Color::DarkGray)),
+                Span::styled(cost_str, Style::default().fg(Color::Yellow)),
+            ]));
+        }
+    }
+
     // PID
     if let Some(pid) = agent.pid {
         lines.push(Line::from(Span::styled(
             format!("PID: {pid}"),
-            Style::default().fg(Color::DarkGray),
-        )));
-    }
-
-    // Pane ID
-    if !agent.pane_id.is_empty() {
-        lines.push(Line::from(Span::styled(
-            format!("Pane: {}", agent.pane_id),
             Style::default().fg(Color::DarkGray),
         )));
     }
@@ -589,7 +601,7 @@ fn draw_stats_panel(frame: &mut Frame, area: Rect, agent: &AgentSnapshot) {
     frame.render_widget(info_widget, area);
 }
 
-fn draw_activity_feed(frame: &mut Frame, area: Rect, agent: &AgentSnapshot) {
+fn draw_activity_feed(frame: &mut Frame, area: Rect, app: &DashApp, agent: &AgentSnapshot) {
     let block = Block::default()
         .borders(Borders::TOP)
         .border_style(Style::default().fg(Color::DarkGray))
@@ -603,38 +615,85 @@ fn draw_activity_feed(frame: &mut Frame, area: Rect, agent: &AgentSnapshot) {
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    // Generate some activity entries based on agent state
     let mut lines: Vec<Line> = Vec::new();
-    let now = chrono::Local::now();
-    let time_str = now.format("%H:%M").to_string();
 
-    let state_desc = match agent.state.as_str() {
-        "idle" => "waiting at prompt...",
-        "typing" => "writing code...",
-        "thinking" => "thinking...",
-        "reading" => "reading files...",
-        "running" => "executing command...",
-        "sleeping" => "sleeping 💤",
-        "error" => "encountered an error!",
-        _ => "...",
-    };
+    // Show real activity events from the status response if available
+    if let Some(ref status) = app.status {
+        // Filter activity events that match this agent
+        let agent_events: Vec<_> = status
+            .recent_activity
+            .iter()
+            .filter(|evt| {
+                evt.agent_name == agent.creature_name
+                    || evt.agent_name == agent.kind
+                    || status.agents.len() <= 1 // if only one agent, show all
+            })
+            .collect();
 
-    lines.push(Line::from(vec![
-        Span::styled(
-            format!("  {time_str} "),
-            Style::default().fg(Color::DarkGray),
-        ),
-        Span::styled(
-            state_desc.to_string(),
-            Style::default().fg(get_state_color(&agent.state)),
-        ),
-    ]));
+        let max_lines = (inner.height as usize).saturating_sub(1);
+        let events_to_show = if agent_events.len() > max_lines {
+            &agent_events[agent_events.len() - max_lines..]
+        } else {
+            &agent_events[..]
+        };
 
-    if let Some(pid) = agent.pid {
-        lines.push(Line::from(Span::styled(
-            format!("  {time_str}  agent process active (pid {pid})"),
-            Style::default().fg(Color::DarkGray),
-        )));
+        for evt in events_to_show {
+            let time_str = evt
+                .timestamp
+                .with_timezone(&chrono::Local)
+                .format("%H:%M")
+                .to_string();
+
+            let evt_color = match evt.event_type {
+                crate::agents::activity::EventType::FileRead => Color::Blue,
+                crate::agents::activity::EventType::FileWrite => Color::Green,
+                crate::agents::activity::EventType::Command => Color::Yellow,
+                crate::agents::activity::EventType::Error => Color::Red,
+                crate::agents::activity::EventType::TokenUsage => Color::DarkGray,
+                crate::agents::activity::EventType::Thinking => Color::Magenta,
+                crate::agents::activity::EventType::Responding => Color::Cyan,
+                _ => Color::Gray,
+            };
+
+            lines.push(Line::from(vec![
+                Span::styled(
+                    format!("  {time_str} "),
+                    Style::default().fg(Color::DarkGray),
+                ),
+                Span::styled(
+                    evt.message.clone(),
+                    Style::default().fg(evt_color),
+                ),
+            ]));
+        }
+    }
+
+    // Fallback: if no real events, show current state
+    if lines.is_empty() {
+        let now = chrono::Local::now();
+        let time_str = now.format("%H:%M").to_string();
+
+        let state_desc = match agent.state.as_str() {
+            "idle" => "waiting at prompt...",
+            "typing" => "writing code...",
+            "thinking" => "thinking...",
+            "reading" => "reading files...",
+            "running" => "executing command...",
+            "sleeping" => "sleeping 💤",
+            "error" => "encountered an error!",
+            _ => "...",
+        };
+
+        lines.push(Line::from(vec![
+            Span::styled(
+                format!("  {time_str} "),
+                Style::default().fg(Color::DarkGray),
+            ),
+            Span::styled(
+                state_desc.to_string(),
+                Style::default().fg(get_state_color(&agent.state)),
+            ),
+        ]));
     }
 
     let feed = Paragraph::new(lines);

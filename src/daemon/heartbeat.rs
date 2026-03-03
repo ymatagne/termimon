@@ -303,15 +303,4 @@ fn update_status(
     Ok(())
 }
 
-fn agent_icon(kind: AgentKind) -> String {
-    match kind {
-        AgentKind::Claude   => "🔥".to_string(),
-        AgentKind::Codex    => "⚡".to_string(),
-        AgentKind::Aider    => "💧".to_string(),
-        AgentKind::Cursor   => "🦀".to_string(),
-        AgentKind::Copilot  => "🌿".to_string(),
-        AgentKind::Continue => "🌿".to_string(),
-        AgentKind::Generic  => "🤖".to_string(),
-        AgentKind::Unknown  => "❓".to_string(),
-    }
-}
+// agent_icon moved to ui::dashboard::status_bar_icon for animated display
