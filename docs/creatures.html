@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Creatures — TermiMon</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <nav>
+    <div class="nav-inner">
+      <div class="logo">🎮 Termi<span>Mon</span></div>
+      <div class="links">
+        <a href="index.html">Home</a>
+        <a href="install.html">Install</a>
+        <a href="creatures.html" class="active">Creatures</a>
+        <a href="commands.html">Commands</a>
+        <a href="roadmap.html">Roadmap</a>
+        <a href="https://github.com/ymatagne/termimon">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <section>
+      <h2>🐾 Creature Compendium</h2>
+      <p>Every AI coding agent gets a creature companion. Creatures are auto-assigned based on the agent type, or you can configure them manually.</p>
+    </section>
+
+    <div class="creatures-grid">
+      <div class="creature-card">
+        <span class="sprite">🔥</span>
+        <h3>Embercli</h3>
+        <span class="type type-fire">Fire</span>
+        <div class="agent">Claude Code</div>
+        <p class="desc">A fiery command-line spirit born from hot compilation loops. Embercli thrives on fast execution — the more code your agent writes, the brighter its flames burn. Evolution unlocks wing-like fire trails.</p>
+      </div>
+      <div class="creature-card">
+        <span class="sprite">⚡</span>
+        <h3>Voltprompt</h3>
+        <span class="type type-electric">Electric</span>
+        <div class="agent">Codex</div>
+        <p class="desc">A crackling prompt engineer that feeds on token throughput. Voltprompt's static charge builds with each API call. At full evolution, lightning arcs between its antenna tips.</p>
+      </div>
+      <div class="creature-card">
+        <span class="sprite">💧</span>
+        <h3>Shelloise</h3>
+        <span class="type type-water">Water</span>
+        <div class="agent">aider</div>
+        <p class="desc">A calm, resilient shell dweller deeply connected to Unix pipes. Shelloise flows between files like water through streams. Its shell hardens with evolution, gaining coral-like patterns.</p>
+      </div>
+      <div class="creature-card">
+        <span class="sprite">🦀</span>
+        <h3>Rustacean</h3>
+        <span class="type type-steel">Steel</span>
+        <div class="agent">Cursor</div>
+        <p class="desc">Forged in metal and memory-safe from birth. Rustacean compiles on first try and never panics (well, almost). Evolution adds chrome plating and gear-like appendages.</p>
+      </div>
+      <div class="creature-card">
+        <span class="sprite">🌿</span>
+        <h3>Pythorn</h3>
+        <span class="type type-grass">Grass</span>
+        <div class="agent">Copilot / Continue</div>
+        <p class="desc">A vine-wrapped creature that grows steadily, photosynthesizing from context windows. Pythorn wraps around problems and squeezes out solutions. Evolves thorny defensive patterns.</p>
+      </div>
+      <div class="creature-card">
+        <span class="sprite">🦇</span>
+        <h3>Gitbat</h3>
+        <span class="type type-dark">Dark</span>
+        <div class="agent">Generic / Unknown</div>
+        <p class="desc">Lurks in the shadows of repositories, echolocating through commit history. Gitbat appears for any unrecognized agent. Evolution grants it larger wings and glowing eyes.</p>
+      </div>
+    </div>
+
+    <section>
+      <h2>🏆 Evolution System</h2>
+      <p>Creatures evolve as their agents work. XP is earned from:</p>
+      <ul style="color:var(--text-dim); padding-left: 20px; line-height: 2.2">
+        <li>File writes and reads</li>
+        <li>Shell commands executed</li>
+        <li>Git operations (commits, pushes)</li>
+        <li>Token usage</li>
+        <li>Successful task completions</li>
+      </ul>
+
+      <h3>Evolution Stages</h3>
+      <table class="cmd-table">
+        <thead><tr><th>Stage</th><th>XP Required</th><th>Changes</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Stage 1</strong> — Baby</td><td>0 XP</td><td>Base sprite, simple animations</td></tr>
+          <tr><td><strong>Stage 2</strong> — Evolved</td><td>100 XP</td><td>Enhanced sprite, new details, faster animations</td></tr>
+          <tr><td><strong>Stage 3</strong> — Final</td><td>500 XP</td><td>Full sprite with special effects and unique idle animation</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>🎬 Animation States</h2>
+      <p>Each creature has multiple animation states that reflect what the agent is doing:</p>
+      <table class="cmd-table">
+        <thead><tr><th>State</th><th>Trigger</th><th>Animation</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Idle</strong></td><td>Agent waiting</td><td>Gentle breathing motion</td></tr>
+          <tr><td><strong>Typing</strong></td><td>Agent writing code</td><td>Fast paw/hand movement</td></tr>
+          <tr><td><strong>Reading</strong></td><td>Agent reading files</td><td>Eye scanning motion</td></tr>
+          <tr><td><strong>Thinking</strong></td><td>Agent planning</td><td>Thought bubble animation</td></tr>
+          <tr><td><strong>Sleeping</strong></td><td>Agent inactive >5min</td><td>Dimmed sprite, Z's</td></tr>
+          <tr><td><strong>Celebrating</strong></td><td>Task completed</td><td>Jump/sparkle effect</td></tr>
+          <tr><td><strong>Error</strong></td><td>Agent hit an error</td><td>Red flash, shake</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+
+  <footer>
+    <p>MIT © 2026 Yan Matagne · <a href="https://github.com/ymatagne/termimon">GitHub</a></p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TermiMon — Terminal Creature Companions for AI Agents</title>
+  <meta name="description" content="htop for AI agents, but every process is an evolving pixel creature. Terminal companions for Claude Code, Codex, aider, Cursor, and more.">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <nav>
+    <div class="nav-inner">
+      <div class="logo">🎮 Termi<span>Mon</span></div>
+      <div class="links">
+        <a href="index.html" class="active">Home</a>
+        <a href="install.html">Install</a>
+        <a href="creatures.html">Creatures</a>
+        <a href="commands.html">Commands</a>
+        <a href="roadmap.html">Roadmap</a>
+        <a href="https://github.com/ymatagne/termimon">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="hero">
+      <h1>🎮 TermiMon</h1>
+      <p class="tagline">htop for AI agents, but every process is an evolving pixel creature</p>
+      <p class="pitch">
+        TermiMon turns your AI coding agents into animated pixel art creatures inside tmux.
+        Each agent gets its own creature that reacts in real-time — typing when writing code,
+        thinking when planning, sleeping when idle, and evolving as it completes work.
+      </p>
+      <div class="hero-install">
+        <span class="prompt">$ </span><span class="cmd">curl -fsSL https://raw.githubusercontent.com/ymatagne/termimon/main/install.sh | sh</span>
+      </div>
+      <br><br>
+      <a href="install.html" class="btn btn-primary">Get Started</a>
+      <a href="creatures.html" class="btn btn-outline">Meet the Creatures</a>
+    </div>
+
+    <section>
+      <h2>✨ Features</h2>
+      <div class="features">
+        <div class="feature">
+          <div class="icon">🐾</div>
+          <h4>Living Creatures</h4>
+          <p>Each AI agent gets an animated pixel art companion with unique personality</p>
+        </div>
+        <div class="feature">
+          <div class="icon">🎨</div>
+          <h4>Pixel Art Rendering</h4>
+          <p>16×16 sprites using half-block Unicode characters (▀▄) — no images needed</p>
+        </div>
+        <div class="feature">
+          <div class="icon">⚡</div>
+          <h4>Lightweight</h4>
+          <p>Pure Rust single binary. Less than 1% CPU and 20MB RAM</p>
+        </div>
+        <div class="feature">
+          <div class="icon">🔌</div>
+          <h4>Auto-Detection</h4>
+          <p>Finds Claude Code, Codex, aider, Cursor, Copilot, and Continue automatically</p>
+        </div>
+        <div class="feature">
+          <div class="icon">📊</div>
+          <h4>Resource Tracking</h4>
+          <p>Per-agent CPU, memory, token costs, and activity feed</p>
+        </div>
+        <div class="feature">
+          <div class="icon">🏆</div>
+          <h4>XP & Evolution</h4>
+          <p>Creatures evolve through 3 stages as your agents complete work</p>
+        </div>
+        <div class="feature">
+          <div class="icon">🎬</div>
+          <h4>Animations</h4>
+          <p>Breathing idle, fast typing, dimmed sleeping — creatures feel alive</p>
+        </div>
+        <div class="feature">
+          <div class="icon">🔀</div>
+          <h4>Agent Switching</h4>
+          <p>Press Enter in the dashboard to jump to any agent's tmux pane</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>🐾 Meet the Creatures</h2>
+      <div class="creatures-grid">
+        <div class="creature-card">
+          <span class="sprite">🔥</span>
+          <h3>Embercli</h3>
+          <span class="type type-fire">Fire</span>
+          <div class="agent">Claude Code</div>
+          <p class="desc">A fiery command-line spirit. Thrives on fast execution and hot loops.</p>
+        </div>
+        <div class="creature-card">
+          <span class="sprite">⚡</span>
+          <h3>Voltprompt</h3>
+          <span class="type type-electric">Electric</span>
+          <div class="agent">Codex</div>
+          <p class="desc">A crackling prompt engineer. Sparks fly when tokens flow.</p>
+        </div>
+        <div class="creature-card">
+          <span class="sprite">💧</span>
+          <h3>Shelloise</h3>
+          <span class="type type-water">Water</span>
+          <div class="agent">aider</div>
+          <p class="desc">A calm, resilient shell dweller. Patient and deeply connected to pipes.</p>
+        </div>
+        <div class="creature-card">
+          <span class="sprite">🦀</span>
+          <h3>Rustacean</h3>
+          <span class="type type-steel">Steel</span>
+          <div class="agent">Cursor</div>
+          <p class="desc">Forged in metal, compiles on first try. Memory-safe and battle-tested.</p>
+        </div>
+        <div class="creature-card">
+          <span class="sprite">🌿</span>
+          <h3>Pythorn</h3>
+          <span class="type type-grass">Grass</span>
+          <div class="agent">Copilot / Continue</div>
+          <p class="desc">Grows steadily, wraps around problems. Photosynthesizes from context windows.</p>
+        </div>
+        <div class="creature-card">
+          <span class="sprite">🦇</span>
+          <h3>Gitbat</h3>
+          <span class="type type-dark">Dark</span>
+          <div class="agent">Generic / Unknown</div>
+          <p class="desc">Lurks in repos, sees in the dark. Echolocates through commit history.</p>
+        </div>
+      </div>
+      <p style="text-align:center"><a href="creatures.html" class="btn btn-outline">Learn More →</a></p>
+    </section>
+
+    <section>
+      <h2>🏁 Quick Start</h2>
+      <pre><code><span style="color:#7c5cff">$</span> termimon start      <span style="color:#888"># Start the daemon (inside tmux)</span>
+<span style="color:#7c5cff">$</span> termimon status     <span style="color:#888"># Check detected agents</span>
+<span style="color:#7c5cff">$</span> termimon dash       <span style="color:#888"># Open interactive dashboard</span>
+<span style="color:#7c5cff">$</span> termimon pokedex    <span style="color:#888"># Browse creature collection</span></code></pre>
+    </section>
+  </div>
+
+  <footer>
+    <p>MIT © 2026 Yan Matagne · <a href="https://github.com/ymatagne/termimon">GitHub</a></p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Install — TermiMon</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <nav>
+    <div class="nav-inner">
+      <div class="logo">🎮 Termi<span>Mon</span></div>
+      <div class="links">
+        <a href="index.html">Home</a>
+        <a href="install.html" class="active">Install</a>
+        <a href="creatures.html">Creatures</a>
+        <a href="commands.html">Commands</a>
+        <a href="roadmap.html">Roadmap</a>
+        <a href="https://github.com/ymatagne/termimon">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <section>
+      <h2>🚀 Installation</h2>
+      <p>TermiMon is a single binary. Pick your preferred method:</p>
+
+      <h3>Quick Install (Recommended)</h3>
+      <p>One command, auto-detects your OS and architecture:</p>
+      <pre><code>curl -fsSL https://raw.githubusercontent.com/ymatagne/termimon/main/install.sh | sh</code></pre>
+
+      <h3>Homebrew</h3>
+      <pre><code>brew tap ymatagne/termimon
+brew install termimon</code></pre>
+
+      <h3>Cargo</h3>
+      <p>If you have Rust installed:</p>
+      <pre><code>cargo install termimon</code></pre>
+
+      <h3>From Source</h3>
+      <pre><code>git clone https://github.com/ymatagne/termimon.git
+cd termimon
+cargo build --release
+# Binary at target/release/termimon</code></pre>
+    </section>
+
+    <section>
+      <h2>📋 Requirements</h2>
+      <ul style="color:var(--text-dim); padding-left: 20px; line-height: 2.2">
+        <li><strong>tmux</strong> — TermiMon works inside tmux sessions</li>
+        <li><strong>A terminal with Unicode support</strong> — most modern terminals work</li>
+        <li><strong>macOS or Linux</strong> — Windows support planned</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>🏁 Quick Start</h2>
+      <p>After installing, start a tmux session and run:</p>
+      <pre><code># Start the TermiMon daemon
+termimon start
+
+# Launch an AI agent in another pane (e.g., Claude Code)
+# TermiMon will auto-detect it
+
+# Open the dashboard
+termimon dash</code></pre>
+      <p>That's it! Your AI agents now have pixel creatures. 🎮</p>
+    </section>
+  </div>
+
+  <footer>
+    <p>MIT © 2026 Yan Matagne · <a href="https://github.com/ymatagne/termimon">GitHub</a></p>
+  </footer>
+</body>
+</html>
