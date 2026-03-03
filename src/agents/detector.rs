@@ -50,13 +50,40 @@ pub fn list_processes() -> Result<Vec<ProcessInfo>> {
 
 /// Get the working directory of a process via `lsof`.
 pub fn get_working_dir(pid: u32) -> Option<String> {
-    // Strategy 1: Check process command line args for --project or working dir
-    // Claude Code often has the project path in its args
-    if let Some(dir) = get_working_dir_from_cmdline(pid) {
+    // Strategy 1: lsof for processes that have a real cwd
+    if let Some(dir) = get_cwd_via_lsof(pid) {
+        if dir != "/" {
+            return Some(dir);
+        }
+    }
+
+    // Strategy 2: Check parent process cwd (Claude Code is spawned from a shell)
+    if let Some(ppid) = get_ppid(pid) {
+        if let Some(dir) = get_cwd_via_lsof(ppid) {
+            if dir != "/" {
+                return Some(dir);
+            }
+        }
+        // Strategy 3: Check grandparent (shell → tmux → zsh)
+        if let Some(gppid) = get_ppid(ppid) {
+            if let Some(dir) = get_cwd_via_lsof(gppid) {
+                if dir != "/" {
+                    return Some(dir);
+                }
+            }
+        }
+    }
+
+    // Strategy 4: For Claude agents, find the most recent JSONL with this session
+    // and read the `cwd` field from it
+    if let Some(dir) = get_working_dir_from_claude_jsonl(pid) {
         return Some(dir);
     }
 
-    // Strategy 2: lsof (works for most processes, but Claude Code returns "/")
+    None
+}
+
+fn get_cwd_via_lsof(pid: u32) -> Option<String> {
     let output = std::process::Command::new("lsof")
         .args(["-d", "cwd", "-p", &pid.to_string(), "-Fn"])
         .stdout(std::process::Stdio::piped())
@@ -67,75 +94,59 @@ pub fn get_working_dir(pid: u32) -> Option<String> {
     let stdout = String::from_utf8_lossy(&output.stdout);
     for line in stdout.lines() {
         if let Some(path) = line.strip_prefix('n') {
-            if path.starts_with('/') && path != "/" {
+            if path.starts_with('/') {
                 return Some(path.to_string());
             }
         }
     }
-
-    // Strategy 3: Check parent process working dir
-    // Claude Code CLI is spawned from a shell — the parent shell's cwd is the project dir
-    if let Some(dir) = get_parent_working_dir(pid) {
-        if dir != "/" {
-            return Some(dir);
-        }
-    }
-
     None
 }
 
-/// Try to get working dir from process command line (macOS: ps -o args)
-fn get_working_dir_from_cmdline(pid: u32) -> Option<String> {
-    let output = std::process::Command::new("ps")
-        .args(["-p", &pid.to_string(), "-o", "args="])
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::null())
-        .output()
-        .ok()?;
-
-    let args = String::from_utf8_lossy(&output.stdout).to_string();
-    // Look for --project flag or a directory path argument
-    let parts: Vec<&str> = args.split_whitespace().collect();
-    for (i, part) in parts.iter().enumerate() {
-        if *part == "--project" || *part == "-p" {
-            if let Some(dir) = parts.get(i + 1) {
-                if std::path::Path::new(dir).is_dir() {
-                    return Some(dir.to_string());
-                }
-            }
-        }
-    }
-    None
-}
-
-/// Get the parent process's working directory
-fn get_parent_working_dir(pid: u32) -> Option<String> {
-    // Get parent PID
+fn get_ppid(pid: u32) -> Option<u32> {
     let output = std::process::Command::new("ps")
         .args(["-p", &pid.to_string(), "-o", "ppid="])
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::null())
         .output()
         .ok()?;
+    String::from_utf8_lossy(&output.stdout).trim().parse().ok()
+}
 
-    let ppid: u32 = String::from_utf8_lossy(&output.stdout).trim().parse().ok()?;
-    if ppid <= 1 {
+/// Read working directory from Claude Code's JSONL transcripts.
+/// JSONL events have a `cwd` field with the real project directory.
+fn get_working_dir_from_claude_jsonl(pid: u32) -> Option<String> {
+    // Find the most recently modified JSONL files
+    let home = dirs::home_dir()?;
+    let projects_dir = home.join(".claude").join("projects");
+    if !projects_dir.exists() {
         return None;
     }
 
-    // Get parent's cwd via lsof
-    let output = std::process::Command::new("lsof")
-        .args(["-d", "cwd", "-p", &ppid.to_string(), "-Fn"])
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::null())
-        .output()
-        .ok()?;
+    // Read all JSONL files, sorted by modification time (newest first)
+    let pattern = projects_dir.join("*").join("*.jsonl").to_string_lossy().to_string();
+    let mut files: Vec<std::path::PathBuf> = glob::glob(&pattern)
+        .ok()?
+        .filter_map(|p| p.ok())
+        .collect();
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    for line in stdout.lines() {
-        if let Some(path) = line.strip_prefix('n') {
-            if path.starts_with('/') && path != "/" {
-                return Some(path.to_string());
+    // Sort by modification time, newest first
+    files.sort_by(|a, b| {
+        let a_time = a.metadata().and_then(|m| m.modified()).unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+        let b_time = b.metadata().and_then(|m| m.modified()).unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+        b_time.cmp(&a_time)
+    });
+
+    // Check the first few files for a cwd field
+    for file in files.iter().take(10) {
+        if let Ok(content) = std::fs::read_to_string(file) {
+            for line in content.lines().take(5) {
+                if let Ok(v) = serde_json::from_str::<serde_json::Value>(line) {
+                    if let Some(cwd) = v.get("cwd").and_then(|c| c.as_str()) {
+                        if !cwd.is_empty() && cwd != "/" {
+                            return Some(cwd.to_string());
+                        }
+                    }
+                }
             }
         }
     }

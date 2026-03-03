@@ -290,9 +290,10 @@ fn tick(
 
             // Compute stable agent identity
             if agent.agent_id.is_empty() {
-                let agent_id = identity::compute_agent_id(
+                let agent_id = identity::compute_agent_id_with_pid(
                     &agent.kind.to_string(),
                     agent.working_dir.as_deref(),
+                    agent.pid,
                 );
                 agent.agent_id = agent_id.clone();
 

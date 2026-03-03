@@ -18,9 +18,12 @@ pub struct CreatureBinding {
 }
 
 /// Compute a stable agent ID from kind + working directory.
+/// If working_dir is "/" or unknown, uses PID as differentiator (not stable across restarts,
+/// but at least gives each agent its own identity).
 /// Returns a short 8-char hex hash.
 pub fn compute_agent_id(agent_kind: &str, working_dir: Option<&str>) -> String {
-    let input = format!("{}:{}", agent_kind, working_dir.unwrap_or("unknown"));
+    let wd = working_dir.unwrap_or("unknown");
+    let input = format!("{}:{}", agent_kind, wd);
     // Simple FNV-1a 64-bit hash → truncated to 8 hex chars
     let mut hash: u64 = 0xcbf29ce484222325;
     for byte in input.bytes() {
@@ -28,6 +31,23 @@ pub fn compute_agent_id(agent_kind: &str, working_dir: Option<&str>) -> String {
         hash = hash.wrapping_mul(0x100000001b3);
     }
     format!("{:08x}", hash as u32)
+}
+
+/// Compute agent ID with PID fallback when working dir is useless.
+pub fn compute_agent_id_with_pid(agent_kind: &str, working_dir: Option<&str>, pid: Option<u32>) -> String {
+    let wd = working_dir.unwrap_or("/");
+    if wd == "/" || wd == "unknown" || wd.is_empty() {
+        // Use PID as differentiator — not stable across restarts but unique per instance
+        let input = format!("{}:pid:{}", agent_kind, pid.unwrap_or(0));
+        let mut hash: u64 = 0xcbf29ce484222325;
+        for byte in input.bytes() {
+            hash ^= byte as u64;
+            hash = hash.wrapping_mul(0x100000001b3);
+        }
+        format!("{:08x}", hash as u32)
+    } else {
+        compute_agent_id(agent_kind, working_dir.as_deref())
+    }
 }
 
 fn bindings_path() -> PathBuf {
