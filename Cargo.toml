@@ -9,6 +9,7 @@ repository = "https://github.com/ymatagne/termimon"
 keywords = ["terminal", "tmux", "ai", "agents", "pixel-art"]
 categories = ["command-line-utilities", "visualization"]
 readme = "README.md"
+homepage = "https://github.com/ymatagne/termimon"
 
 [dependencies]
 anyhow = "1"

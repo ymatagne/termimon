@@ -27,10 +27,33 @@
 - 📊 **Status Dashboard** — See agent health, mood, and activity at a glance
 - 🌈 **Themeable** — Customize colors and appearance
 
-## 🚀 Quick Install
+## 🚀 Install
+
+### One-liner (easiest)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ymatagne/termimon/main/install.sh | sh
+```
+
+### Homebrew
+
+```bash
+brew tap ymatagne/termimon
+brew install termimon
+```
+
+### Cargo
 
 ```bash
 cargo install termimon
+```
+
+### From source
+
+```bash
+git clone https://github.com/ymatagne/termimon.git
+cd termimon
+make install
 ```
 
 ## 🏁 Quick Start
