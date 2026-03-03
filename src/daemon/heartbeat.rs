@@ -255,16 +255,28 @@ fn tick(
             let key = format!("proc-{}", proc.pid);
             if !seen.contains(&key) {
                 seen.push(key.clone());
+                // Try to find which tmux pane owns this process
+                let real_pane_id = panes.iter().find(|p| {
+                    detector::descendant_processes(p.pane_pid, &procs)
+                        .iter()
+                        .any(|d| d.pid == proc.pid)
+                }).map(|p| p.pane_id.clone());
+
+                let pane_id_str = real_pane_id.unwrap_or_else(|| format!("pid-{}", proc.pid));
                 let agent = tracked
                     .entry(key)
                     .or_insert_with(|| {
-                        tracing::info!("New agent (process scan): {} pid={}", kind, proc.pid);
-                        let mut a = TrackedAgent::new(kind, format!("pid-{}", proc.pid));
+                        tracing::info!("New agent (process scan): {} pid={} pane={}", kind, proc.pid, pane_id_str);
+                        let mut a = TrackedAgent::new(kind, pane_id_str.clone());
                         a.pid = Some(proc.pid);
                         a
                     });
                 agent.kind = kind;
                 agent.pid = Some(proc.pid);
+                // Update pane_id if we found a real one
+                if agent.pane_id.starts_with("pid-") && !pane_id_str.starts_with("pid-") {
+                    agent.pane_id = pane_id_str;
+                }
 
                 // Try Claude JSONL transcript for state
                 if kind == AgentKind::Claude {

@@ -652,7 +652,7 @@ fn draw_agent_detail(frame: &mut Frame, area: Rect, app: &DashApp, _status: &Sta
 }
 
 fn draw_sprite_panel(frame: &mut Frame, area: Rect, app: &DashApp, agent: &AgentSnapshot) {
-    let sprite_base = sprites::sprite_for_agent(&agent.kind);
+    let sprite_base = sprites::sprite_for_species(&agent.creature_species);
 
     let is_sleeping = agent.state == "sleeping";
 
