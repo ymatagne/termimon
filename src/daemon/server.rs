@@ -100,6 +100,10 @@ pub struct StatusResponse {
     pub costs: Vec<AgentCostSummary>,
     #[serde(default)]
     pub recent_activity: Vec<ActivityEvent>,
+    #[serde(default)]
+    pub total_tokens: u64,
+    #[serde(default)]
+    pub total_cost_cents: u64,
 }
 
 /// Shared daemon state exposed to IPC clients.
@@ -110,6 +114,8 @@ pub struct DaemonState {
     pub heartbeat_count: u64,
     pub costs: Vec<AgentCostSummary>,
     pub recent_activity: Vec<ActivityEvent>,
+    pub total_tokens: u64,
+    pub total_cost_cents: u64,
 }
 
 pub type SharedState = Arc<Mutex<DaemonState>>;
@@ -121,6 +127,8 @@ pub fn new_shared_state() -> SharedState {
         heartbeat_count: 0,
         costs: Vec::new(),
         recent_activity: Vec::new(),
+        total_tokens: 0,
+        total_cost_cents: 0,
     }))
 }
 
@@ -188,6 +196,8 @@ async fn handle_client(stream: tokio::net::UnixStream, state: SharedState) -> Re
                 total_xp: st.agents.iter().map(|a| a.xp).sum(),
                 costs: st.costs.clone(),
                 recent_activity: st.recent_activity.clone(),
+                total_tokens: st.total_tokens,
+                total_cost_cents: st.total_cost_cents,
             };
             serde_json::to_string(&resp)?
         }

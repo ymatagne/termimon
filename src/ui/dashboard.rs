@@ -262,8 +262,9 @@ fn draw_header(frame: &mut Frame, area: Rect, app: &DashApp) {
             "??".to_string()
         };
         format!(
-            " | ⏱ {} | 💓 {} | {} agents",
-            uptime, status.heartbeat_count, status.agents.len()
+            " | ⏱ {} | 💓 {} | {} agents | 💰 {}",
+            uptime, status.heartbeat_count, status.agents.len(),
+            crate::agents::cost::format_cost(status.total_cost_cents)
         )
     } else {
         " | ⚠ daemon not connected".to_string()
@@ -576,9 +577,22 @@ fn draw_stats_panel(frame: &mut Frame, area: Rect, app: &DashApp, agent: &AgentS
 
     // Tokens and cost (from cost tracker)
     if let Some(ref status) = app.status {
-        if let Some(cost_info) = status.costs.iter().find(|c| c.agent_id == agent.agent_id) {
+        // Try per-agent cost first, fallback to per-project, then total
+        let cost_info = status.costs.iter().find(|c| c.agent_id == agent.agent_id)
+            .or_else(|| {
+                // Try matching by project dir
+                agent.working_dir.as_ref().and_then(|wd| {
+                    let encoded = crate::agents::cost::encode_working_dir(wd);
+                    let project_key = format!("project:{}", encoded);
+                    status.costs.iter().find(|c| c.agent_id == project_key)
+                })
+            });
+
+        if let Some(cost_info) = cost_info {
             let total_tokens = cost_info.input_tokens + cost_info.output_tokens;
-            let tokens_str = if total_tokens >= 1000 {
+            let tokens_str = if total_tokens >= 1_000_000 {
+                format!("{:.1}M", total_tokens as f64 / 1_000_000.0)
+            } else if total_tokens >= 1000 {
                 format!("{:.1}K", total_tokens as f64 / 1000.0)
             } else {
                 format!("{total_tokens}")
@@ -587,6 +601,23 @@ fn draw_stats_panel(frame: &mut Frame, area: Rect, app: &DashApp, agent: &AgentS
 
             lines.push(Line::from(vec![
                 Span::styled("Tokens: ", Style::default().fg(Color::DarkGray)),
+                Span::styled(tokens_str, Style::default().fg(Color::White)),
+                Span::styled("  Cost: ", Style::default().fg(Color::DarkGray)),
+                Span::styled(cost_str, Style::default().fg(Color::Yellow)),
+            ]));
+        } else if status.total_cost_cents > 0 {
+            // Show total Claude cost as fallback
+            let total_tokens = status.total_tokens;
+            let tokens_str = if total_tokens >= 1_000_000 {
+                format!("{:.1}M", total_tokens as f64 / 1_000_000.0)
+            } else if total_tokens >= 1000 {
+                format!("{:.1}K", total_tokens as f64 / 1000.0)
+            } else {
+                format!("{total_tokens}")
+            };
+            let cost_str = crate::agents::cost::format_cost(status.total_cost_cents);
+            lines.push(Line::from(vec![
+                Span::styled("All Claude: ", Style::default().fg(Color::DarkGray)),
                 Span::styled(tokens_str, Style::default().fg(Color::White)),
                 Span::styled("  Cost: ", Style::default().fg(Color::DarkGray)),
                 Span::styled(cost_str, Style::default().fg(Color::Yellow)),
@@ -638,9 +669,14 @@ fn draw_activity_feed(frame: &mut Frame, area: Rect, app: &DashApp, agent: &Agen
             .recent_activity
             .iter()
             .filter(|evt| {
-                evt.agent_name == agent.creature_name
-                    || evt.agent_name == agent.kind
+                // Match by agent name (case-insensitive) or creature name
+                let evt_name = evt.agent_name.to_lowercase();
+                let kind = agent.kind.to_lowercase();
+                evt_name == kind
+                    || evt_name.contains("claude") && kind.contains("claude")
+                    || evt_name == agent.creature_name.to_lowercase()
                     || status.agents.len() <= 1 // if only one agent, show all
+                    || true // For now, show all activity for any agent (until per-agent mapping works)
             })
             .collect();
 

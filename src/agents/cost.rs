@@ -308,27 +308,45 @@ impl AgentCostTracker {
     }
 
     /// Scan all Claude transcripts and rebuild cost data.
-    /// Accepts a mapping of working_dir → agent_id so costs are keyed by agent_id
-    /// (matching the dashboard's expectations) instead of raw session IDs.
-    pub fn scan_all_transcripts(&mut self, workdir_to_agent_id: &std::collections::HashMap<String, String>) {
+    pub fn scan_all_transcripts(&mut self, _workdir_to_agent_id: &std::collections::HashMap<String, String>) {
         let files = find_transcript_files();
-        // Group by session
+
+        // Reset aggregate before rebuilding
+        self.agents.remove("claude-all");
+
+        let mut total_events: Vec<TokenUsageEvent> = Vec::new();
+
         for file in &files {
             let events = parse_transcript_tokens(file);
             if events.is_empty() {
                 continue;
             }
-            // Try to map this file's project dir to a tracked agent_id
-            // workdir_to_agent_id keys are encoded dir names like "-Users-yan-foo"
-            let key = if let Some(project_dir) = session_project_dir_name(&file) {
-                workdir_to_agent_id.get(&project_dir)
-                    .cloned()
-                    .unwrap_or_else(|| events[0].session_id.clone())
-            } else {
-                events[0].session_id.clone()
-            };
-            self.ingest(&key, &events);
+
+            // Also map per-project for project-level breakdown
+            if let Some(project_dir) = session_project_dir_name(&file) {
+                let project_key = format!("project:{}", project_dir);
+                self.ingest(&project_key, &events);
+            }
+
+            total_events.extend(events);
         }
+
+        // Aggregate ALL Claude costs under "claude-all"
+        if !total_events.is_empty() {
+            self.ingest("claude-all", &total_events);
+        }
+    }
+
+    /// Get total cost summary (all Claude sessions combined).
+    pub fn total_summary(&self) -> Option<AgentCostSummary> {
+        self.agents.get("claude-all").map(|c| AgentCostSummary {
+            agent_id: "claude-all".to_string(),
+            input_tokens: c.total_input_tokens,
+            output_tokens: c.total_output_tokens,
+            cost_cents: c.total_cost_cents,
+            sessions: c.sessions,
+            last_updated: c.last_updated,
+        })
     }
 
     /// Get a serializable summary for IPC (per-agent costs).

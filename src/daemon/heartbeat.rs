@@ -120,6 +120,10 @@ pub async fn run_heartbeat(mut shutdown: watch::Receiver<bool>) {
                 st.agents = snapshots;
                 st.costs = cost_tracker.summary();
                 st.recent_activity = activity_feed.recent(20);
+                if let Some(total) = cost_tracker.total_summary() {
+                    st.total_tokens = total.input_tokens + total.output_tokens;
+                    st.total_cost_cents = total.cost_cents;
+                }
             }
         }
 
