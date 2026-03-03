@@ -121,6 +121,91 @@ pub fn update_from_costs(tracker: &AgentCostTracker, agent_kind: &str) -> Result
     Ok(())
 }
 
+/// Show session history CLI command.
+pub fn show_history(days: u32) -> Result<()> {
+    use chrono::Duration;
+
+    println!();
+    println!("📊 TermiMon Session History");
+    println!("═══════════════════════════════════════════");
+    println!();
+
+    let today = Utc::now().date_naive();
+    let mut grand_total: u64 = 0;
+    let mut has_data = false;
+
+    for i in 0..days {
+        let date = today - Duration::days(i as i64);
+        let date_str = date.format("%Y-%m-%d").to_string();
+        let stats = load_stats(&date_str).unwrap_or_default();
+
+        if stats.agents.is_empty() && stats.total_cost_cents == 0 {
+            continue;
+        }
+        has_data = true;
+
+        let label = match i {
+            0 => "Today".to_string(),
+            1 => "Yesterday".to_string(),
+            _ => date_str.clone(),
+        };
+
+        println!(
+            "  {} ({})  —  {}",
+            label,
+            date_str,
+            crate::agents::cost::format_cost(stats.total_cost_cents),
+        );
+
+        for (agent_id, agent_stats) in &stats.agents {
+            // Skip the aggregate keys
+            if agent_id == "claude-all" {
+                continue;
+            }
+            let tokens = agent_stats.input_tokens + agent_stats.output_tokens;
+            println!(
+                "    {} — {} tokens, {}",
+                agent_id,
+                crate::agents::cost::format_tokens(tokens),
+                crate::agents::cost::format_cost(agent_stats.cost_cents),
+            );
+        }
+        println!();
+
+        grand_total += stats.total_cost_cents;
+    }
+
+    if !has_data {
+        println!("  No data yet. Start the daemon and run some AI agents!");
+        println!();
+    } else {
+        println!("───────────────────────────────────────────");
+        println!(
+            "  Total ({} days): {}",
+            days,
+            crate::agents::cost::format_cost(grand_total),
+        );
+        println!();
+    }
+
+    // Also try to show live data from daemon
+    if let Ok(rt) = tokio::runtime::Runtime::new() {
+        if let Ok(response) = rt.block_on(crate::daemon::server::client_request("status")) {
+            if let Ok(status) = serde_json::from_str::<crate::daemon::server::StatusResponse>(response.trim()) {
+                if status.total_cost_cents > 0 {
+                    println!("  🔴 Live session: {} tokens, {}",
+                        crate::agents::cost::format_tokens(status.total_tokens),
+                        crate::agents::cost::format_cost(status.total_cost_cents),
+                    );
+                    println!();
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

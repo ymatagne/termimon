@@ -3,6 +3,7 @@
 //! Provides control mode connections, pane discovery, content capture,
 //! and status bar management for the TermiMon daemon.
 
+pub mod bind;
 pub mod control;
 pub mod pane;
 pub mod status;

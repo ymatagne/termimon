@@ -12,7 +12,7 @@ use crossterm::{
 };
 use ratatui::{
     prelude::*,
-    widgets::*,
+    widgets::{*, Clear},
 };
 use std::io::stdout;
 use std::time::{Duration, Instant};
@@ -30,6 +30,35 @@ const ANIM_TICK_IDLE: Duration = Duration::from_millis(500);
 /// Faster tick for typing state.
 const ANIM_TICK_TYPING: Duration = Duration::from_millis(250);
 
+/// Sort mode for agent list.
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum SortMode {
+    Name,
+    Cpu,
+    Cost,
+    Xp,
+}
+
+impl SortMode {
+    fn next(self) -> Self {
+        match self {
+            SortMode::Name => SortMode::Cpu,
+            SortMode::Cpu => SortMode::Cost,
+            SortMode::Cost => SortMode::Xp,
+            SortMode::Xp => SortMode::Name,
+        }
+    }
+
+    fn label(self) -> &'static str {
+        match self {
+            SortMode::Name => "name",
+            SortMode::Cpu => "CPU",
+            SortMode::Cost => "cost",
+            SortMode::Xp => "XP",
+        }
+    }
+}
+
 /// Dashboard application state.
 struct DashApp {
     status: Option<StatusResponse>,
@@ -44,6 +73,14 @@ struct DashApp {
     flash_msg: Option<(String, Instant)>,
     /// If set, after exiting the dashboard we switch to this pane.
     switch_target: Option<String>,
+    /// Current sort mode.
+    sort_mode: SortMode,
+    /// Show help overlay.
+    show_help: bool,
+    /// Filter string for agents.
+    filter: Option<String>,
+    /// Whether we're in filter input mode.
+    filter_input: bool,
 }
 
 impl DashApp {
@@ -57,7 +94,39 @@ impl DashApp {
             last_anim_tick: Instant::now(),
             flash_msg: None,
             switch_target: None,
+            sort_mode: SortMode::Name,
+            show_help: false,
+            filter: None,
+            filter_input: false,
         }
+    }
+
+    /// Get filtered and sorted agents.
+    fn visible_agents(&self) -> Vec<&AgentSnapshot> {
+        let agents = match &self.status {
+            Some(s) => &s.agents,
+            None => return Vec::new(),
+        };
+        let mut visible: Vec<&AgentSnapshot> = agents.iter()
+            .filter(|a| {
+                if let Some(ref f) = self.filter {
+                    let f_lower = f.to_lowercase();
+                    a.creature_name.to_lowercase().contains(&f_lower)
+                        || a.kind.to_lowercase().contains(&f_lower)
+                        || a.agent_id.to_lowercase().contains(&f_lower)
+                } else {
+                    true
+                }
+            })
+            .collect();
+
+        match self.sort_mode {
+            SortMode::Name => visible.sort_by(|a, b| a.creature_name.cmp(&b.creature_name)),
+            SortMode::Cpu => visible.sort_by(|a, b| b.cpu_pct.partial_cmp(&a.cpu_pct).unwrap_or(std::cmp::Ordering::Equal)),
+            SortMode::Cost => visible.sort_by(|a, b| b.xp.cmp(&a.xp)), // cost not directly on snapshot, use xp as proxy
+            SortMode::Xp => visible.sort_by(|a, b| b.xp.cmp(&a.xp)),
+        }
+        visible
     }
 
     async fn refresh(&mut self) {
@@ -155,27 +224,80 @@ pub async fn run() -> Result<()> {
         if event::poll(Duration::from_millis(50))? {
             if let Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
-                    match key.code {
-                        KeyCode::Char('q') | KeyCode::Esc => break,
-                        KeyCode::Up | KeyCode::Char('k') => {
-                            if app.selected > 0 {
-                                app.selected -= 1;
+                    // Filter input mode
+                    if app.filter_input {
+                        match key.code {
+                            KeyCode::Esc => {
+                                app.filter_input = false;
+                                app.filter = None;
                             }
+                            KeyCode::Enter => {
+                                app.filter_input = false;
+                            }
+                            KeyCode::Backspace => {
+                                if let Some(ref mut f) = app.filter {
+                                    f.pop();
+                                    if f.is_empty() {
+                                        app.filter = None;
+                                    }
+                                }
+                            }
+                            KeyCode::Char(c) => {
+                                app.filter.get_or_insert_with(String::new).push(c);
+                            }
+                            _ => {}
                         }
-                        KeyCode::Down | KeyCode::Char('j') => {
-                            if let Some(ref status) = app.status {
-                                if app.selected + 1 < status.agents.len() {
+                    } else if app.show_help {
+                        // Any key dismisses help
+                        app.show_help = false;
+                    } else {
+                        match key.code {
+                            KeyCode::Char('q') | KeyCode::Esc => break,
+                            KeyCode::Up | KeyCode::Char('k') => {
+                                if app.selected > 0 {
+                                    app.selected -= 1;
+                                }
+                            }
+                            KeyCode::Down | KeyCode::Char('j') => {
+                                let count = app.visible_agents().len();
+                                if app.selected + 1 < count {
                                     app.selected += 1;
                                 }
                             }
+                            KeyCode::Enter => {
+                                app.try_switch_agent();
+                            }
+                            KeyCode::Char('r') => {
+                                app.refresh().await;
+                            }
+                            KeyCode::Char('s') => {
+                                app.sort_mode = app.sort_mode.next();
+                                app.flash_msg = Some((
+                                    format!("Sort: {}", app.sort_mode.label()),
+                                    Instant::now(),
+                                ));
+                            }
+                            KeyCode::Char('?') => {
+                                app.show_help = true;
+                            }
+                            KeyCode::Char('/') => {
+                                app.filter_input = true;
+                                app.filter = Some(String::new());
+                            }
+                            KeyCode::Char('d') => {
+                                // Kill selected agent's process
+                                if let Some(agent) = app.selected_agent() {
+                                    if let Some(pid) = agent.pid {
+                                        unsafe { libc::kill(pid as i32, libc::SIGTERM); }
+                                        app.flash_msg = Some((
+                                            format!("Sent SIGTERM to PID {}", pid),
+                                            Instant::now(),
+                                        ));
+                                    }
+                                }
+                            }
+                            _ => {}
                         }
-                        KeyCode::Enter => {
-                            app.try_switch_agent();
-                        }
-                        KeyCode::Char('r') => {
-                            app.refresh().await;
-                        }
-                        _ => {}
                     }
                 }
             }
@@ -243,6 +365,43 @@ fn draw_dashboard(frame: &mut Frame, app: &DashApp) {
     draw_header(frame, chunks[0], app);
     draw_body(frame, chunks[1], app);
     draw_footer(frame, chunks[2], app);
+
+    // Help overlay
+    if app.show_help {
+        draw_help_overlay(frame, area);
+    }
+}
+
+fn draw_help_overlay(frame: &mut Frame, area: Rect) {
+    let help_text = vec![
+        Line::from(Span::styled("  TermiMon Dashboard Help", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))),
+        Line::from(""),
+        Line::from(vec![Span::styled("  q/Esc  ", Style::default().fg(Color::Yellow)), Span::raw("Quit dashboard")]),
+        Line::from(vec![Span::styled("  ↑/↓    ", Style::default().fg(Color::Yellow)), Span::raw("Navigate agents")]),
+        Line::from(vec![Span::styled("  Enter  ", Style::default().fg(Color::Yellow)), Span::raw("Switch to agent's tmux pane")]),
+        Line::from(vec![Span::styled("  r      ", Style::default().fg(Color::Yellow)), Span::raw("Refresh/rescan")]),
+        Line::from(vec![Span::styled("  s      ", Style::default().fg(Color::Yellow)), Span::raw("Cycle sort mode (name/CPU/cost/XP)")]),
+        Line::from(vec![Span::styled("  d      ", Style::default().fg(Color::Yellow)), Span::raw("Kill selected agent (SIGTERM)")]),
+        Line::from(vec![Span::styled("  /      ", Style::default().fg(Color::Yellow)), Span::raw("Filter agents by name")]),
+        Line::from(vec![Span::styled("  ?      ", Style::default().fg(Color::Yellow)), Span::raw("Show this help")]),
+        Line::from(""),
+        Line::from(Span::styled("  Press any key to close", Style::default().fg(Color::DarkGray))),
+    ];
+
+    let w = 50u16.min(area.width.saturating_sub(4));
+    let h = (help_text.len() as u16 + 2).min(area.height.saturating_sub(4));
+    let x = (area.width.saturating_sub(w)) / 2;
+    let y = (area.height.saturating_sub(h)) / 2;
+    let popup_area = Rect::new(x, y, w, h);
+
+    let help = Paragraph::new(help_text)
+        .block(Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Yellow))
+            .title(" Help ")
+            .style(Style::default().bg(Color::Rgb(20, 20, 30))));
+    frame.render_widget(Clear, popup_area);
+    frame.render_widget(help, popup_area);
 }
 
 fn draw_header(frame: &mut Frame, area: Rect, app: &DashApp) {
@@ -765,38 +924,35 @@ fn draw_footer(frame: &mut Frame, area: Rect, app: &DashApp) {
             )
         });
 
-    let controls = if let Some(flash_span) = flash {
+    let controls = if app.filter_input {
+        let filter_str = app.filter.as_deref().unwrap_or("");
+        Paragraph::new(Line::from(vec![
+            Span::styled(" Filter: ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled(filter_str.to_string(), Style::default().fg(Color::White)),
+            Span::styled("▌", Style::default().fg(Color::Yellow)),
+            Span::styled("  (Enter to confirm, Esc to cancel)", Style::default().fg(Color::DarkGray)),
+        ]))
+    } else if let Some(flash_span) = flash {
         Paragraph::new(Line::from(vec![flash_span]))
     } else {
+        let sort_label = format!("[sort:{}] ", app.sort_mode.label());
+        let filter_label = app.filter.as_ref().map(|f| format!("[filter:{}] ", f)).unwrap_or_default();
         Paragraph::new(Line::from(vec![
-            Span::styled(
-                " q",
-                Style::default()
-                    .fg(Color::Yellow)
-                    .add_modifier(Modifier::BOLD),
-            ),
+            Span::styled(" q", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
             Span::raw(" quit  "),
-            Span::styled(
-                "↑↓",
-                Style::default()
-                    .fg(Color::Yellow)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::raw(" select  "),
-            Span::styled(
-                "⏎",
-                Style::default()
-                    .fg(Color::Yellow)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::raw(" switch to agent  "),
-            Span::styled(
-                "r",
-                Style::default()
-                    .fg(Color::Yellow)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::raw(" refresh"),
+            Span::styled("↑↓", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::raw(" nav  "),
+            Span::styled("⏎", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::raw(" switch  "),
+            Span::styled("s", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::raw(" sort  "),
+            Span::styled("d", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::raw(" kill  "),
+            Span::styled("/", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::raw(" filter  "),
+            Span::styled("?", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::raw(" help  "),
+            Span::styled(format!("{sort_label}{filter_label}"), Style::default().fg(Color::DarkGray)),
         ]))
     };
 

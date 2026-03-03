@@ -87,7 +87,11 @@ pub struct NotificationConfig {
     pub terminal_bell: bool,
     #[serde(default = "default_true")]
     pub system_notify: bool,
+    #[serde(default = "default_cost_alert_threshold")]
+    pub cost_alert_threshold_cents: u64,
 }
+
+fn default_cost_alert_threshold() -> u64 { 1000 } // $10
 
 // Default value functions
 fn default_poll_interval() -> u64 { 2000 }
@@ -168,6 +172,7 @@ impl Default for NotificationConfig {
             evolution: true,
             terminal_bell: false,
             system_notify: true,
+            cost_alert_threshold_cents: default_cost_alert_threshold(),
         }
     }
 }
@@ -244,6 +249,7 @@ aider = "shelloise"
 evolution = true
 terminal_bell = false
 system_notify = true
+cost_alert_threshold_cents = 1000  # $10.00
 "#
     .to_string()
 }

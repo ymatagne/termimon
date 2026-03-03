@@ -80,6 +80,19 @@ enum Commands {
         /// Agent number (1-based). If omitted, shows interactive list.
         number: Option<usize>,
     },
+
+    /// Add tmux key binding (prefix+P) to toggle the dashboard
+    Bind,
+
+    /// Remove tmux key binding
+    Unbind,
+
+    /// Show session history and cost breakdown
+    History {
+        /// Number of days to show (default: 7)
+        #[arg(short, long, default_value = "7")]
+        days: u32,
+    },
 }
 
 #[tokio::main]
@@ -118,6 +131,15 @@ async fn main() -> anyhow::Result<()> {
         }
         Commands::Switch { number } => {
             ui::dashboard::switch_command(number).await?;
+        }
+        Commands::Bind => {
+            tmux::bind::bind_hotkey()?;
+        }
+        Commands::Unbind => {
+            tmux::bind::unbind_hotkey()?;
+        }
+        Commands::History { days } => {
+            stats::show_history(days)?;
         }
     }
 

@@ -91,7 +91,8 @@ mod tests {
         assert_eq!(default_creature_for_agent("codex"), Some("voltprompt"));
         assert_eq!(default_creature_for_agent("openai-codex"), Some("voltprompt"));
         assert_eq!(default_creature_for_agent("aider"), Some("shelloise"));
-        assert_eq!(default_creature_for_agent("unknown_agent"), None);
+        // "unknown_agent" matches the registry's "unknown" default_agent for gitbat
+        assert_eq!(default_creature_for_agent("unknown_agent"), Some("gitbat"));
     }
 
     #[test]

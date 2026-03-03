@@ -3,6 +3,7 @@
 //! start/stop/status via PID file, Unix socket IPC, and heartbeat loop.
 
 pub mod heartbeat;
+pub mod notify;
 pub mod server;
 
 use anyhow::{Context, Result};

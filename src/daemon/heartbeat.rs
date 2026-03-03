@@ -24,9 +24,11 @@ const AGENT_PROCESS_NAMES: &[&str] = &[
 /// Run the heartbeat loop until shutdown.
 pub async fn run_heartbeat(mut shutdown: watch::Receiver<bool>) {
     let registry = DetectorRegistry::new();
-    let _config = config::load();
+    let cfg = config::load();
     let mut tracked: HashMap<String, TrackedAgent> = HashMap::new();
     let mut cycle: u64 = 0;
+    let mut last_cost_alert_cents: u64 = 0;
+    let cost_threshold_cents: u64 = cfg.notifications.cost_alert_threshold_cents;
 
     // Intelligence layer: cost tracking, activity feed, productivity
     let mut cost_tracker = AgentCostTracker::new();
@@ -43,7 +45,7 @@ pub async fn run_heartbeat(mut shutdown: watch::Receiver<bool>) {
             break;
         }
 
-        if let Err(e) = tick(&registry, &config, &mut tracked, cycle) {
+        if let Err(e) = tick(&registry, &cfg, &mut tracked, cycle) {
             tracing::warn!("Heartbeat error: {e:#}");
             if cycle <= 3 {
                 eprintln!("TermiMon heartbeat error: {e:#}");
@@ -75,7 +77,21 @@ pub async fn run_heartbeat(mut shutdown: watch::Receiver<bool>) {
             }
 
             // Award XP from recent activity events
-            award_xp_from_activity(&activity_feed, &tracked);
+            award_xp_from_activity(&activity_feed, &tracked, &cfg);
+
+            // Check cost threshold
+            if let Some(total) = cost_tracker.total_summary() {
+                if total.cost_cents >= cost_threshold_cents && last_cost_alert_cents < cost_threshold_cents {
+                    super::notify::send_notification(
+                        &super::notify::NotifyEvent::CostThreshold {
+                            current_cents: total.cost_cents,
+                            threshold_cents: cost_threshold_cents,
+                        },
+                        &cfg,
+                    );
+                    last_cost_alert_cents = total.cost_cents;
+                }
+            }
         }
 
         // Update productivity stats (every 30s like cost scanning)
@@ -395,6 +411,7 @@ fn update_status(
 fn award_xp_from_activity(
     feed: &ActivityFeed,
     tracked: &HashMap<String, TrackedAgent>,
+    config: &config::Config,
 ) {
     use crate::agents::activity::EventType;
 
@@ -490,12 +507,27 @@ fn award_xp_from_activity(
             if new_xp != binding.xp {
                 identity::update_xp(agent_id, new_xp, new_stage);
                 if new_stage > binding.stage {
+                    let species = binding.creature_species.clone();
+                    let creature_def = crate::creatures::registry::get_creature_def(&species);
+                    let creature_name = creature_def
+                        .map(|d| d.evolution_names[(new_stage as usize).saturating_sub(1).min(2)].to_string())
+                        .unwrap_or_else(|| species.clone());
+
                     tracing::info!(
                         agent_id = %agent_id,
                         old_stage = binding.stage,
                         new_stage = new_stage,
                         xp = new_xp,
                         "🎉 Creature evolved!"
+                    );
+
+                    super::notify::send_notification(
+                        &super::notify::NotifyEvent::Evolution {
+                            creature_name,
+                            new_stage,
+                            xp: new_xp,
+                        },
+                        config,
                     );
                 }
             }
