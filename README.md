@@ -1,4 +1,4 @@
-<![CDATA[<div align="center">
+<div align="center">
 
 # 🎮 TermiMon
 
@@ -178,4 +178,3 @@ Especially wanted:
 ## 📄 License
 
 [MIT](LICENSE) © 2026 Yan Matagne
-]]>
