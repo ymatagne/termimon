@@ -223,9 +223,13 @@ pub async fn run() -> Result<()> {
         // Tick animation
         app.tick_animation();
 
-        // Check if we need to switch to a pane
-        if app.switch_target.is_some() {
-            break;
+        // Execute pending pane switch without exiting dashboard
+        if let Some(target) = app.switch_target.take() {
+            execute_tmux_switch(&target);
+            app.flash_msg = Some((
+                format!("Switched to {}", target),
+                Instant::now(),
+            ));
         }
 
         terminal.draw(|frame| draw_dashboard(frame, &app))?;
@@ -329,11 +333,6 @@ pub async fn run() -> Result<()> {
     // Restore terminal
     disable_raw_mode()?;
     stdout().execute(LeaveAlternateScreen)?;
-
-    // Execute tmux switch if requested
-    if let Some(pane_id) = app.switch_target {
-        execute_tmux_switch(&pane_id);
-    }
 
     Ok(())
 }
