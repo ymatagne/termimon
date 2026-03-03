@@ -106,44 +106,101 @@ fn get_ppid(pid: u32) -> Option<u32> {
     String::from_utf8_lossy(&output.stdout).trim().parse().ok()
 }
 
-/// Read working directories from Claude Code's history.jsonl.
-/// Returns a map of session_id → project_dir for all known sessions.
-pub fn load_claude_session_projects() -> HashMap<String, String> {
-    let mut map = HashMap::new();
+/// Find active Claude project directories by looking at recently modified JSONL files.
+/// Returns project dirs sorted by most recently modified (most active first).
+/// Each project dir is the real filesystem path decoded from the encoded dirname.
+pub fn find_active_claude_projects(max_age_secs: u64) -> Vec<(String, String)> {
+    // Returns Vec<(encoded_project_dir, real_project_path)>
     let home = match dirs::home_dir() {
         Some(h) => h,
-        None => return map,
+        None => return Vec::new(),
     };
-    let history_path = home.join(".claude").join("history.jsonl");
-    if !history_path.exists() {
-        return map;
+    let projects_dir = home.join(".claude").join("projects");
+    if !projects_dir.exists() {
+        return Vec::new();
     }
 
-    if let Ok(content) = std::fs::read_to_string(&history_path) {
-        for line in content.lines().rev() {  // reverse: most recent first
-            if let Ok(v) = serde_json::from_str::<serde_json::Value>(line) {
-                if let (Some(sid), Some(project)) = (
-                    v.get("sessionId").and_then(|s| s.as_str()),
-                    v.get("project").and_then(|p| p.as_str()),
-                ) {
-                    if !project.is_empty() && project != "/" {
-                        map.entry(sid.to_string()).or_insert_with(|| project.to_string());
+    let now = std::time::SystemTime::now();
+    let mut project_times: HashMap<String, (std::time::SystemTime, String)> = HashMap::new();
+
+    // Walk all JSONL files, find most recent per project dir
+    if let Ok(entries) = std::fs::read_dir(&projects_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if !path.is_dir() { continue; }
+            let encoded_name = path.file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_default();
+            
+            // Find most recently modified JSONL in this project dir (and subdirs)
+            let mut newest: Option<std::time::SystemTime> = None;
+            visit_jsonl_files(&path, &mut |f: &std::path::Path| {
+                if let Ok(meta) = f.metadata() {
+                    if let Ok(mtime) = meta.modified() {
+                        if newest.map_or(true, |n| mtime > n) {
+                            newest = Some(mtime);
+                        }
+                    }
+                }
+            });
+
+            if let Some(mtime) = newest {
+                if let Ok(age) = now.duration_since(mtime) {
+                    if age.as_secs() <= max_age_secs {
+                        let real_path = decode_project_dir(&encoded_name);
+                        project_times.insert(encoded_name.clone(), (mtime, real_path));
                     }
                 }
             }
         }
     }
-    map
+
+    // Sort by most recent first
+    let mut results: Vec<_> = project_times.into_iter()
+        .map(|(encoded, (_, real))| (encoded, real))
+        .collect();
+    results.sort();
+    results
 }
 
-/// Get unique project directories for currently active Claude sessions.
-/// Scans history.jsonl to find which projects have recent activity.
-pub fn get_active_claude_projects() -> Vec<String> {
-    let map = load_claude_session_projects();
-    let mut projects: Vec<String> = map.values().cloned().collect();
-    projects.sort();
-    projects.dedup();
-    projects
+fn visit_jsonl_files(dir: &std::path::Path, cb: &mut dyn FnMut(&std::path::Path)) {
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let p = entry.path();
+            if p.is_dir() {
+                visit_jsonl_files(&p, cb);
+            } else if p.extension().and_then(|e| e.to_str()) == Some("jsonl") {
+                cb(&p);
+            }
+        }
+    }
+}
+
+/// Decode an encoded project directory name back to a real path.
+/// "-Users-yan-github-com-foo" → "/Users/yan/github.com/foo"  
+/// "-private-tmp-termimon" → "/private/tmp/termimon"
+fn decode_project_dir(encoded: &str) -> String {
+    // The encoding replaces "/" with "-" and strips the leading "/"
+    // But we can't perfectly reverse it. Use history.jsonl for real paths.
+    let home = dirs::home_dir().unwrap_or_default();
+    let history_path = home.join(".claude").join("history.jsonl");
+    
+    // Build a map of encoded → real from history.jsonl
+    if let Ok(content) = std::fs::read_to_string(&history_path) {
+        for line in content.lines().rev() {
+            if let Ok(v) = serde_json::from_str::<serde_json::Value>(line) {
+                if let Some(project) = v.get("project").and_then(|p| p.as_str()) {
+                    let test_encoded = crate::agents::cost::encode_working_dir(project);
+                    if test_encoded == encoded {
+                        return project.to_string();
+                    }
+                }
+            }
+        }
+    }
+    
+    // Fallback: best-effort decode (replace leading - with /)
+    format!("/{}", encoded.replace('-', "/"))
 }
 
 /// Build a pid → children mapping.

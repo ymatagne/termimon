@@ -280,8 +280,8 @@ fn tick(
     });
 
     // Post-pass: compute CPU/mem sums, working dir, and agent identity for all tracked agents
-    // Load Claude session → project mapping for working dir assignment
-    let claude_projects = detector::load_claude_session_projects();
+    // Find active Claude projects (modified in last 6 hours)
+    let active_projects = detector::find_active_claude_projects(6 * 3600);
     let mut used_projects: std::collections::HashSet<String> = std::collections::HashSet::new();
     // Collect already-assigned working dirs
     for agent in tracked.values() {
@@ -292,28 +292,34 @@ fn tick(
         }
     }
 
-    for agent in tracked.values_mut() {
+    // Sort Claude agents so we assign projects in a stable order
+    let mut agent_keys: Vec<String> = tracked.keys().cloned().collect();
+    agent_keys.sort();
+
+    for key in &agent_keys {
+        let agent = match tracked.get_mut(key) {
+            Some(a) => a,
+            None => continue,
+        };
         if let Some(pid) = agent.pid {
             // Sum CPU and memory across all descendant processes
             let descendants = detector::descendant_processes(pid, &procs);
             agent.cpu_pct = descendants.iter().map(|p| p.cpu_pct).sum();
             agent.mem_mb = descendants.iter().map(|p| p.mem_mb).sum();
 
-            // Detect working directory on first discovery (cache it)
+            // Detect working directory
             if agent.working_dir.is_none() || agent.working_dir.as_deref() == Some("/") {
                 let wd = detector::get_working_dir(pid);
                 if wd.as_deref() != Some("/") && wd.is_some() {
                     agent.working_dir = wd;
                 } else if agent.kind == AgentKind::Claude {
-                    // Fallback: assign from Claude history.jsonl
-                    // Find a project dir not yet assigned to another agent
-                    let unique_projects: Vec<String> = claude_projects.values()
-                        .filter(|p| !used_projects.contains(*p))
-                        .cloned()
-                        .collect();
-                    if let Some(project) = unique_projects.first() {
-                        agent.working_dir = Some(project.clone());
-                        used_projects.insert(project.clone());
+                    // Assign from active Claude projects (most recently modified JSONL)
+                    for (_encoded, real_path) in &active_projects {
+                        if !used_projects.contains(real_path) {
+                            agent.working_dir = Some(real_path.clone());
+                            used_projects.insert(real_path.clone());
+                            break;
+                        }
                     }
                 }
             }
@@ -426,11 +432,19 @@ fn award_xp_from_activity(
             if let Some(agent_id) = name_to_id.get(&agent_name) {
                 *xp_gains.entry(agent_id.clone()).or_insert(0) += xp;
             } else {
-                // Fallback: award to first matching agent kind
+                // Fallback: fuzzy match — "claude" matches "claude code"
+                let mut matched = false;
                 for (name, id) in &name_to_id {
-                    if agent_name.contains(name) {
+                    if agent_name.contains(name) || name.contains(&agent_name) {
                         *xp_gains.entry(id.clone()).or_insert(0) += xp;
+                        matched = true;
                         break;
+                    }
+                }
+                // Last resort: if only one agent, give it all XP
+                if !matched && name_to_id.len() == 1 {
+                    if let Some(id) = name_to_id.values().next() {
+                        *xp_gains.entry(id.clone()).or_insert(0) += xp;
                     }
                 }
             }
