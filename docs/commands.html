@@ -4,92 +4,99 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Commands — TermiMon</title>
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
   <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
   <nav>
     <div class="nav-inner">
-      <div class="logo">🎮 Termi<span>Mon</span></div>
-      <div class="links">
+      <a href="index.html" class="logo"><img src="assets/logo.svg" alt="">Termi<span>Mon</span></a>
+      <div class="nav-links" id="navLinks">
         <a href="index.html">Home</a>
-        <a href="install.html">Install</a>
         <a href="creatures.html">Creatures</a>
         <a href="commands.html" class="active">Commands</a>
         <a href="roadmap.html">Roadmap</a>
-        <a href="https://github.com/ymatagne/termimon">GitHub</a>
+        <a href="https://github.com/ymatagne/termimon" class="gh-link">★ GitHub</a>
       </div>
+      <button class="mobile-toggle" onclick="document.getElementById('navLinks').classList.toggle('open')">☰</button>
     </div>
   </nav>
 
-  <div class="container">
-    <section>
-      <h2>📖 Command Reference</h2>
-      <p>All commands are run via the <code>termimon</code> binary.</p>
+  <div class="page-content">
+    <div class="section-label">Reference</div>
+    <h1>Commands</h1>
+    <p class="page-desc">Everything you can do with the TermiMon CLI.</p>
 
+    <div class="cmd-section reveal">
+      <h2>🚀 Core Commands</h2>
       <table class="cmd-table">
         <thead><tr><th>Command</th><th>Description</th></tr></thead>
         <tbody>
-          <tr><td><code>termimon start</code></td><td>Start the background daemon. Must be inside a tmux session.</td></tr>
-          <tr><td><code>termimon stop</code></td><td>Stop the running daemon.</td></tr>
-          <tr><td><code>termimon status</code></td><td>Show detected agents, their creatures, XP, and resource usage.</td></tr>
-          <tr><td><code>termimon dash</code></td><td>Open the interactive dashboard with pixel art, stats, activity feed, sorting &amp; filtering.</td></tr>
+          <tr><td><code>termimon start</code></td><td class="desc">Start TermiMon and begin monitoring for AI agents</td></tr>
+          <tr><td><code>termimon stop</code></td><td class="desc">Stop all TermiMon processes</td></tr>
+          <tr><td><code>termimon status</code></td><td class="desc">Show current creature status, XP, and activity</td></tr>
+          <tr><td><code>termimon watch</code></td><td class="desc">Open the live creature view in your terminal</td></tr>
         </tbody>
       </table>
-    </section>
+    </div>
 
-    <section>
-      <h2>🎮 Dashboard Controls</h2>
-      <p>Inside <code>termimon dash</code>:</p>
+    <div class="cmd-section reveal">
+      <h2>🐾 Creature Commands</h2>
       <table class="cmd-table">
-        <thead><tr><th>Key</th><th>Action</th></tr></thead>
+        <thead><tr><th>Command</th><th>Description</th></tr></thead>
         <tbody>
-          <tr><td><code>↑</code> / <code>k</code></td><td>Previous agent</td></tr>
-          <tr><td><code>↓</code> / <code>j</code></td><td>Next agent</td></tr>
-          <tr><td><code>Enter</code></td><td>Switch to selected agent's tmux pane</td></tr>
-          <tr><td><code>Tab</code></td><td>Cycle dashboard panels</td></tr>
-          <tr><td><code>q</code></td><td>Quit dashboard</td></tr>
+          <tr><td><code>termimon creature</code></td><td class="desc">Show your current creature's stats and evolution progress</td></tr>
+          <tr><td><code>termimon creature rename &lt;name&gt;</code></td><td class="desc">Give your creature a custom name</td></tr>
+          <tr><td><code>termimon creatures</code></td><td class="desc">List all available creature types</td></tr>
         </tbody>
       </table>
-    </section>
+    </div>
 
-    <section>
+    <div class="cmd-section reveal">
+      <h2>⚔️ Battle &amp; Team</h2>
+      <table class="cmd-table">
+        <thead><tr><th>Command</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>termimon team join &lt;url&gt;</code></td><td class="desc">Join a team server</td></tr>
+          <tr><td><code>termimon team status</code></td><td class="desc">Show connected teammates and their creatures</td></tr>
+          <tr><td><code>termimon battle &lt;user&gt;</code></td><td class="desc">Challenge a teammate to a creature battle</td></tr>
+          <tr><td><code>termimon feed</code></td><td class="desc">View the team activity feed</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="cmd-section reveal">
       <h2>⚙️ Configuration</h2>
-      <p>Config file: <code>~/.termimon/config.toml</code></p>
-      <pre><code>[general]
-poll_interval_ms = 2000    # How often to scan for agents
-animation_fps = 4          # Sprite animation speed
-theme = "default"          # Color theme
-
-[statusbar]
-position = "right"         # tmux status bar position
-max_creatures = 5          # Max creatures in status bar
-show_xp = false            # Show XP in status bar
-show_state = true          # Show animation state name
-
-[creatures.assignments]    # Override auto-assignment
-claude = "embercli"
-codex = "voltprompt"
-aider = "shelloise"
-cursor = "rustacean"
-copilot = "pythorn"</code></pre>
-    </section>
-
-    <section>
-      <h2>📁 File Locations</h2>
       <table class="cmd-table">
-        <thead><tr><th>Path</th><th>Purpose</th></tr></thead>
+        <thead><tr><th>Command</th><th>Description</th></tr></thead>
         <tbody>
-          <tr><td><code>~/.termimon/config.toml</code></td><td>Configuration</td></tr>
-          <tr><td><code>~/.termimon/stats/</code></td><td>Daily stats persistence</td></tr>
-          <tr><td><code>~/.termimon/termimon.pid</code></td><td>Daemon PID file</td></tr>
-          <tr><td><code>~/.termimon/termimon.sock</code></td><td>Daemon socket</td></tr>
+          <tr><td><code>termimon config</code></td><td class="desc">Show current configuration</td></tr>
+          <tr><td><code>termimon config set &lt;key&gt; &lt;val&gt;</code></td><td class="desc">Update a config value</td></tr>
+          <tr><td><code>termimon tokens</code></td><td class="desc">Show token usage stats for tracked agents</td></tr>
+          <tr><td><code>termimon reset</code></td><td class="desc">Reset creature data (⚠️ irreversible)</td></tr>
         </tbody>
       </table>
-    </section>
+    </div>
   </div>
 
   <footer>
-    <p>MIT © 2026 Yan Matagne · <a href="https://github.com/ymatagne/termimon">GitHub</a></p>
+    <div class="footer-inner">
+      <div class="footer-links">
+        <a href="index.html">Home</a>
+        <a href="creatures.html">Creatures</a>
+        <a href="commands.html">Commands</a>
+        <a href="roadmap.html">Roadmap</a>
+        <a href="https://github.com/ymatagne/termimon">GitHub</a>
+      </div>
+      <p class="footer-credit">Made with <span class="fire">🔥</span> by Yan Matagne · MIT License</p>
+    </div>
   </footer>
+
+  <script>
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+  </script>
 </body>
 </html>

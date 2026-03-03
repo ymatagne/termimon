@@ -4,152 +4,265 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TermiMon — Terminal Creature Companions for AI Agents</title>
-  <meta name="description" content="Your AI coding agents deserve pets. Pixel art creatures in tmux that evolve as your agents work. Supports Claude Code, Codex, aider, Cursor, Copilot, Continue, and Cline.">
+  <meta name="description" content="Your AI coding agents deserve pets. Pixel art creatures in tmux that evolve as your agents work.">
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
   <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
   <nav>
     <div class="nav-inner">
-      <div class="logo">🎮 Termi<span>Mon</span></div>
-      <div class="links">
+      <a href="index.html" class="logo">
+        <img src="assets/logo.svg" alt="TermiMon">
+        Termi<span>Mon</span>
+      </a>
+      <div class="nav-links" id="navLinks">
         <a href="index.html" class="active">Home</a>
-        <a href="install.html">Install</a>
+        <a href="creatures.html">Creatures</a>
+        <a href="commands.html">Commands</a>
+        <a href="roadmap.html">Roadmap</a>
+        <a href="https://github.com/ymatagne/termimon" class="gh-link">★ GitHub</a>
+      </div>
+      <button class="mobile-toggle" onclick="document.getElementById('navLinks').classList.toggle('open')">☰</button>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-badge">
+      <span class="dot"></span>
+      Now with Team Mode & Battles
+    </div>
+    <h1>TermiMon</h1>
+    <p class="tagline">Your AI agents deserve pets</p>
+    <p class="pitch">
+      Turn your AI coding agents into animated pixel art creatures inside tmux.
+      Each agent gets a companion that reacts in real-time — typing, thinking, sleeping — 
+      and evolving as it completes work.
+    </p>
+
+    <div class="hero-creatures">
+      <div class="hero-creature"><div class="pixel-creature pixel-embercli"></div></div>
+      <div class="hero-creature"><div class="pixel-creature pixel-voltprompt"></div></div>
+      <div class="hero-creature"><div class="pixel-creature pixel-shelloise"></div></div>
+      <div class="hero-creature"><div class="pixel-creature pixel-rustacean"></div></div>
+      <div class="hero-creature"><div class="pixel-creature pixel-pythorn"></div></div>
+      <div class="hero-creature"><div class="pixel-creature pixel-gitbat"></div></div>
+    </div>
+
+    <div class="btn-row">
+      <a href="#install" class="btn btn-primary">Get Started →</a>
+      <a href="creatures.html" class="btn btn-outline">Meet the Creatures</a>
+    </div>
+  </div>
+
+  <!-- FEATURES -->
+  <section class="reveal">
+    <div class="section-label">Features</div>
+    <h2 class="section-title">Everything your terminal was missing</h2>
+    <p class="section-desc">TermiMon detects your AI agents automatically and brings them to life with pixel art companions.</p>
+    
+    <div class="features-grid reveal-children">
+      <div class="feature-card">
+        <div class="feature-icon">🐾</div>
+        <h3>Auto-Detection</h3>
+        <p>Automatically detects Claude Code, Codex, aider, Cursor, Copilot, Continue, and Cline running in your terminal.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⚡</div>
+        <h3>XP &amp; Evolution</h3>
+        <p>Creatures gain XP from real work — commits, file changes, test passes. Watch them evolve through 3 stages.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⚔️</div>
+        <h3>Battle System</h3>
+        <p>Challenge teammates' creatures to turn-based battles with elemental type advantages and special moves.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">👥</div>
+        <h3>Team Mode</h3>
+        <p>Connect with your team over the network. See everyone's creatures, share activity feeds, battle each other.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📡</div>
+        <h3>Activity Feed</h3>
+        <p>Real-time feed of what every creature is doing — commits, reviews, deployments, all visualized beautifully.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🪙</div>
+        <h3>Token Tracking</h3>
+        <p>Track AI token usage per agent. See cost breakdowns and usage patterns alongside your creature stats.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CREATURE SHOWCASE -->
+  <section class="reveal">
+    <div class="section-label">Creatures</div>
+    <h2 class="section-title">Choose your companion</h2>
+    <p class="section-desc">Six unique creatures, each tied to a different element. Your agent type determines your starter.</p>
+
+    <div class="creatures-grid reveal-children">
+      <div class="creature-card" style="--creature-color: var(--fire)">
+        <div class="pixel-creature pixel-embercli creature-pixel"></div>
+        <div class="element-badge element-fire">🔥 Fire</div>
+        <h3>Embercli</h3>
+        <p class="creature-desc">A fiery spirit born from hot loops and burning deadlines. Fueled by passion.</p>
+        <div class="evo-chain">Spark <span class="arrow">→</span> Embercli <span class="arrow">→</span> Infernocli</div>
+      </div>
+      <div class="creature-card" style="--creature-color: var(--electric)">
+        <div class="pixel-creature pixel-voltprompt creature-pixel"></div>
+        <div class="element-badge element-electric">⚡ Electric</div>
+        <h3>Voltprompt</h3>
+        <p class="creature-desc">Crackles with static from rapid-fire prompts. Lightning-fast responses.</p>
+        <div class="evo-chain">Zapplet <span class="arrow">→</span> Voltprompt <span class="arrow">→</span> Gigavolt</div>
+      </div>
+      <div class="creature-card" style="--creature-color: var(--water)">
+        <div class="pixel-creature pixel-shelloise creature-pixel"></div>
+        <div class="element-badge element-water">💧 Water</div>
+        <h3>Shelloise</h3>
+        <p class="creature-desc">Calm and steady. Carries its shell of cached knowledge everywhere.</p>
+        <div class="evo-chain">Droplet <span class="arrow">→</span> Shelloise <span class="arrow">→</span> Tidebreaker</div>
+      </div>
+      <div class="creature-card" style="--creature-color: var(--rust)">
+        <div class="pixel-creature pixel-rustacean creature-pixel"></div>
+        <div class="element-badge element-rust">🦀 Rust</div>
+        <h3>Rustacean</h3>
+        <p class="creature-desc">Built different. Memory-safe claws and zero-cost abstractions.</p>
+        <div class="evo-chain">Ferrite <span class="arrow">→</span> Rustacean <span class="arrow">→</span> Oxidrake</div>
+      </div>
+      <div class="creature-card" style="--creature-color: var(--grass)">
+        <div class="pixel-creature pixel-pythorn creature-pixel"></div>
+        <div class="element-badge element-grass">🌿 Grass</div>
+        <h3>Pythorn</h3>
+        <p class="creature-desc">Grows through every codebase like ivy. Elegant and adaptable.</p>
+        <div class="evo-chain">Seedling <span class="arrow">→</span> Pythorn <span class="arrow">→</span> Thornweave</div>
+      </div>
+      <div class="creature-card" style="--creature-color: var(--dark)">
+        <div class="pixel-creature pixel-gitbat creature-pixel"></div>
+        <div class="element-badge element-dark">🦇 Dark</div>
+        <h3>Gitbat</h3>
+        <p class="creature-desc">Lurks in repos. Sees through merge conflicts with echolocation.</p>
+        <div class="evo-chain">Nibbler <span class="arrow">→</span> Gitbat <span class="arrow">→</span> Shadowfork</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- EVOLUTION TIMELINE -->
+  <section class="reveal">
+    <div class="section-label">Progression</div>
+    <h2 class="section-title">Watch them grow</h2>
+    <p class="section-desc">Creatures evolve as your agents complete real work. Every commit, review, and deploy counts.</p>
+
+    <div class="evo-timeline">
+      <div class="evo-stage">
+        <div class="stage-num">Stage 1</div>
+        <div class="stage-name">Baby</div>
+        <div class="stage-xp">0 XP</div>
+      </div>
+      <div class="evo-arrow">→</div>
+      <div class="evo-stage">
+        <div class="stage-num">Stage 2</div>
+        <div class="stage-name">Evolved</div>
+        <div class="stage-xp">1,000 XP</div>
+      </div>
+      <div class="evo-arrow">→</div>
+      <div class="evo-stage">
+        <div class="stage-num">Stage 3</div>
+        <div class="stage-name">Final Form</div>
+        <div class="stage-xp">5,000 XP</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INSTALL -->
+  <section id="install" class="reveal">
+    <div class="section-label">Get Started</div>
+    <h2 class="section-title">One command. That's it.</h2>
+    <p class="section-desc">Install TermiMon in seconds. Works on macOS and Linux.</p>
+
+    <div class="install-block">
+      <div class="terminal-block">
+        <div class="terminal-header">
+          <span class="terminal-dot red"></span>
+          <span class="terminal-dot yellow"></span>
+          <span class="terminal-dot green"></span>
+          <span class="terminal-title">terminal</span>
+        </div>
+        <div class="terminal-body">
+          <button class="copy-btn" onclick="copyInstall(this)">Copy</button>
+          <div><span class="comment"># Install TermiMon</span></div>
+          <div><span class="prompt">$ </span><span class="cmd" id="installCmd">curl -fsSL https://raw.githubusercontent.com/ymatagne/termimon/main/install.sh | sh</span></div>
+          <br>
+          <div><span class="comment"># Start your companion</span></div>
+          <div><span class="prompt">$ </span><span class="cmd">termimon start</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BATTLE / TEAM MODE -->
+  <section class="reveal">
+    <div class="section-label">Team Mode</div>
+    <h2 class="section-title">Battle your teammates</h2>
+    <p class="section-desc">Connect over the network, see everyone's creatures, and challenge them to elemental battles.</p>
+
+    <div class="battle-showcase">
+      <div class="battle-creature">
+        <div class="pixel-creature pixel-embercli creature-pixel"></div>
+        <h4>Embercli</h4>
+        <span class="element-badge element-fire">🔥 Fire</span>
+        <div class="stat-bar"><span>HP</span><div class="bar"><div class="bar-fill" style="width:85%;background:var(--fire)"></div></div><span>85</span></div>
+        <div class="stat-bar"><span>ATK</span><div class="bar"><div class="bar-fill" style="width:72%;background:var(--electric)"></div></div><span>72</span></div>
+        <div class="stat-bar"><span>SPD</span><div class="bar"><div class="bar-fill" style="width:60%;background:var(--grass)"></div></div><span>60</span></div>
+      </div>
+
+      <div class="battle-vs">VS</div>
+
+      <div class="battle-creature">
+        <div class="pixel-creature pixel-shelloise creature-pixel"></div>
+        <h4>Shelloise</h4>
+        <span class="element-badge element-water">💧 Water</span>
+        <div class="stat-bar"><span>HP</span><div class="bar"><div class="bar-fill" style="width:92%;background:var(--fire)"></div></div><span>92</span></div>
+        <div class="stat-bar"><span>ATK</span><div class="bar"><div class="bar-fill" style="width:55%;background:var(--electric)"></div></div><span>55</span></div>
+        <div class="stat-bar"><span>SPD</span><div class="bar"><div class="bar-fill" style="width:40%;background:var(--grass)"></div></div><span>40</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-links">
+        <a href="index.html">Home</a>
         <a href="creatures.html">Creatures</a>
         <a href="commands.html">Commands</a>
         <a href="roadmap.html">Roadmap</a>
         <a href="https://github.com/ymatagne/termimon">GitHub</a>
       </div>
+      <p class="footer-credit">Made with <span class="fire">🔥</span> by Yan Matagne · MIT License</p>
     </div>
-  </nav>
-
-  <div class="container">
-    <div class="hero">
-      <h1>🎮 TermiMon</h1>
-      <p class="tagline">Your AI coding agents deserve pets</p>
-      <p class="pitch">
-        TermiMon turns your AI coding agents into animated pixel art creatures inside tmux.
-        Each agent gets its own creature that reacts in real-time — typing when writing code,
-        thinking when planning, sleeping when idle, and evolving as it completes work.
-      </p>
-      <div class="hero-install">
-        <span class="prompt">$ </span><span class="cmd">curl -fsSL https://raw.githubusercontent.com/ymatagne/termimon/main/install.sh | sh</span>
-      </div>
-      <br><br>
-      <a href="install.html" class="btn btn-primary">Get Started</a>
-      <a href="creatures.html" class="btn btn-outline">Meet the Creatures</a>
-    </div>
-
-    <section>
-      <h2>✨ Features</h2>
-      <div class="features">
-        <div class="feature">
-          <div class="icon">🐾</div>
-          <h4>Living Creatures</h4>
-          <p>Each AI agent gets an animated pixel art companion with unique personality</p>
-        </div>
-        <div class="feature">
-          <div class="icon">🎨</div>
-          <h4>Pixel Art Rendering</h4>
-          <p>16×16 sprites using half-block Unicode characters (▀▄) — no images needed</p>
-        </div>
-        <div class="feature">
-          <div class="icon">⚡</div>
-          <h4>Lightweight</h4>
-          <p>Pure Rust single binary. Less than 1% CPU and 20MB RAM</p>
-        </div>
-        <div class="feature">
-          <div class="icon">🔌</div>
-          <h4>Auto-Detection</h4>
-          <p>Finds Claude Code, Codex, aider, Cursor, Copilot, Continue, and Cline automatically</p>
-        </div>
-        <div class="feature">
-          <div class="icon">📊</div>
-          <h4>Token &amp; Cost Tracking</h4>
-          <p>Per-agent token costs from Claude JSONL transcripts, plus activity feed</p>
-        </div>
-        <div class="feature">
-          <div class="icon">🖥️</div>
-          <h4>Status Bar</h4>
-          <p>Creatures live in your tmux status-right — always visible at a glance</p>
-        </div>
-        <div class="feature">
-          <div class="icon">🏆</div>
-          <h4>XP & Evolution</h4>
-          <p>Creatures evolve through 3 stages as your agents complete work</p>
-        </div>
-        <div class="feature">
-          <div class="icon">🎬</div>
-          <h4>Animations</h4>
-          <p>Breathing idle, fast typing, dimmed sleeping — creatures feel alive</p>
-        </div>
-        <div class="feature">
-          <div class="icon">🔀</div>
-          <h4>Agent Switching</h4>
-          <p>Press Enter in the dashboard to jump to any agent's tmux pane</p>
-        </div>
-      </div>
-    </section>
-
-    <section>
-      <h2>🐾 Meet the Creatures</h2>
-      <div class="creatures-grid">
-        <div class="creature-card">
-          <span class="sprite">🔥</span>
-          <h3>Embercli</h3>
-          <span class="type type-fire">Fire</span>
-          <div class="agent">Claude Code</div>
-          <p class="desc">A fiery command-line spirit. Thrives on fast execution and hot loops.</p>
-        </div>
-        <div class="creature-card">
-          <span class="sprite">⚡</span>
-          <h3>Voltprompt</h3>
-          <span class="type type-electric">Electric</span>
-          <div class="agent">Codex</div>
-          <p class="desc">A crackling prompt engineer. Sparks fly when tokens flow.</p>
-        </div>
-        <div class="creature-card">
-          <span class="sprite">💧</span>
-          <h3>Shelloise</h3>
-          <span class="type type-water">Water</span>
-          <div class="agent">aider</div>
-          <p class="desc">A calm, resilient shell dweller. Patient and deeply connected to pipes.</p>
-        </div>
-        <div class="creature-card">
-          <span class="sprite">🦀</span>
-          <h3>Rustacean</h3>
-          <span class="type type-steel">Steel</span>
-          <div class="agent">Cursor</div>
-          <p class="desc">Forged in metal, compiles on first try. Memory-safe and battle-tested.</p>
-        </div>
-        <div class="creature-card">
-          <span class="sprite">🌿</span>
-          <h3>Pythorn</h3>
-          <span class="type type-grass">Grass</span>
-          <div class="agent">Copilot / Continue / Cline</div>
-          <p class="desc">Grows steadily, wraps around problems. Photosynthesizes from context windows.</p>
-        </div>
-        <div class="creature-card">
-          <span class="sprite">🦇</span>
-          <h3>Gitbat</h3>
-          <span class="type type-dark">Dark</span>
-          <div class="agent">Generic / Unknown</div>
-          <p class="desc">Lurks in repos, sees in the dark. Echolocates through commit history.</p>
-        </div>
-      </div>
-      <p style="text-align:center"><a href="creatures.html" class="btn btn-outline">Learn More →</a></p>
-    </section>
-
-    <section>
-      <h2>🏁 Quick Start</h2>
-      <pre><code><span style="color:#7c5cff">$</span> termimon start      <span style="color:#888"># Start the daemon (inside tmux)</span>
-<span style="color:#7c5cff">$</span> termimon status     <span style="color:#888"># Check detected agents</span>
-<span style="color:#7c5cff">$</span> termimon dash       <span style="color:#888"># Open interactive dashboard</span>
-<span style="color:#7c5cff">$</span> termimon pokedex    <span style="color:#888"># Browse creature collection</span></code></pre>
-    </section>
-  </div>
-
-  <footer>
-    <p>MIT © 2026 Yan Matagne · <a href="https://github.com/ymatagne/termimon">GitHub</a></p>
   </footer>
+
+  <script>
+    // Scroll reveal
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible');
+        }
+      });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.reveal, .reveal-children').forEach(el => observer.observe(el));
+
+    // Copy install command
+    function copyInstall(btn) {
+      const cmd = document.getElementById('installCmd').textContent;
+      navigator.clipboard.writeText(cmd).then(() => {
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = 'Copy', 2000);
+      });
+    }
+  </script>
 </body>
 </html>

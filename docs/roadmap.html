@@ -4,59 +4,101 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Roadmap — TermiMon</title>
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
   <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
   <nav>
     <div class="nav-inner">
-      <div class="logo">🎮 Termi<span>Mon</span></div>
-      <div class="links">
+      <a href="index.html" class="logo"><img src="assets/logo.svg" alt="">Termi<span>Mon</span></a>
+      <div class="nav-links" id="navLinks">
         <a href="index.html">Home</a>
-        <a href="install.html">Install</a>
         <a href="creatures.html">Creatures</a>
         <a href="commands.html">Commands</a>
         <a href="roadmap.html" class="active">Roadmap</a>
-        <a href="https://github.com/ymatagne/termimon">GitHub</a>
+        <a href="https://github.com/ymatagne/termimon" class="gh-link">★ GitHub</a>
       </div>
+      <button class="mobile-toggle" onclick="document.getElementById('navLinks').classList.toggle('open')">☰</button>
     </div>
   </nav>
 
-  <div class="container">
-    <section>
-      <h2>🗺️ Roadmap</h2>
-      <p>What's done, what's next.</p>
+  <div class="page-content">
+    <div class="section-label">Roadmap</div>
+    <h1>What's Next</h1>
+    <p class="page-desc">Shipped features and what's coming to TermiMon.</p>
 
-      <h3>✅ v0.3.1 — Current</h3>
-      <div class="roadmap-item done"><div class="check">✓</div><div>Core daemon with tmux agent detection</div></div>
-      <div class="roadmap-item done"><div class="check">✓</div><div>6 creatures with pixel art sprites (Embercli, Voltprompt, Shelloise, Rustacean, Pythorn, Gitbat)</div></div>
-      <div class="roadmap-item done"><div class="check">✓</div><div>XP system with 3-stage evolution (100 / 500 XP) — named stages per species</div></div>
-      <div class="roadmap-item done"><div class="check">✓</div><div>Per-agent token &amp; cost tracking (Claude Code JSONL transcript parsing)</div></div>
-      <div class="roadmap-item done"><div class="check">✓</div><div>Activity feed (file reads/writes, commands, errors, thinking)</div></div>
-      <div class="roadmap-item done"><div class="check">✓</div><div>Interactive dashboard with sort, filter, and sprite animations</div></div>
-      <div class="roadmap-item done"><div class="check">✓</div><div>Agent switching from dashboard (Enter → tmux pane, without exiting)</div></div>
-      <div class="roadmap-item done"><div class="check">✓</div><div>Animated sprites with breathing/bounce effects</div></div>
-      <div class="roadmap-item done"><div class="check">✓</div><div>tmux status bar widget — creatures in status-right</div></div>
-      <div class="roadmap-item done"><div class="check">✓</div><div>Auto-detects Claude Code, Codex, aider, Cursor, Copilot, Continue, and Cline</div></div>
-      <div class="roadmap-item done"><div class="check">✓</div><div>Stable agent identity via project directory</div></div>
-      <div class="roadmap-item done"><div class="check">✓</div><div>Daily stats persistence</div></div>
-
-      <h3>🔜 Next</h3>
-      <div class="roadmap-item"><div class="check"></div><div>Theme packs (retro, neon, pastel)</div></div>
-      <div class="roadmap-item"><div class="check"></div><div>Sound effects via terminal bell patterns</div></div>
-      <div class="roadmap-item"><div class="check"></div><div>Process detection beyond tmux (standalone processes)</div></div>
-
-      <h3>🔮 Future</h3>
-      <div class="roadmap-item"><div class="check"></div><div>Creature battles — compare agent productivity in a fun way</div></div>
-      <div class="roadmap-item"><div class="check"></div><div>Team mode — shared creature collection across machines</div></div>
-      <div class="roadmap-item"><div class="check"></div><div>Plugin system for custom agent detectors</div></div>
-      <div class="roadmap-item"><div class="check"></div><div>Web dashboard export</div></div>
-      <div class="roadmap-item"><div class="check"></div><div>More creatures and elemental types</div></div>
-      <div class="roadmap-item"><div class="check"></div><div>Notification system (creature alerts when agent needs attention)</div></div>
-    </section>
+    <div class="roadmap-list">
+      <div class="roadmap-item done reveal">
+        <div class="rm-label">✅ Shipped</div>
+        <h3>Core Engine</h3>
+        <p>Agent detection, pixel art rendering, tmux integration, real-time state machine</p>
+      </div>
+      <div class="roadmap-item done reveal">
+        <div class="rm-label">✅ Shipped</div>
+        <h3>6 Starter Creatures</h3>
+        <p>Embercli, Voltprompt, Shelloise, Rustacean, Pythorn, Gitbat — all with animations</p>
+      </div>
+      <div class="roadmap-item done reveal">
+        <div class="rm-label">✅ Shipped</div>
+        <h3>XP &amp; Evolution System</h3>
+        <p>3-stage evolution based on real work — commits, file changes, test passes</p>
+      </div>
+      <div class="roadmap-item done reveal">
+        <div class="rm-label">✅ Shipped</div>
+        <h3>Multi-Agent Support</h3>
+        <p>Run multiple agents simultaneously, each with their own creature</p>
+      </div>
+      <div class="roadmap-item in-progress reveal">
+        <div class="rm-label">🔨 In Progress</div>
+        <h3>Team Mode &amp; Battles</h3>
+        <p>Network multiplayer — see teammates' creatures, battle with elemental advantages</p>
+      </div>
+      <div class="roadmap-item in-progress reveal">
+        <div class="rm-label">🔨 In Progress</div>
+        <h3>Token Tracking</h3>
+        <p>Per-agent token usage monitoring with cost breakdowns</p>
+      </div>
+      <div class="roadmap-item reveal">
+        <div class="rm-label">📋 Planned</div>
+        <h3>Achievement System</h3>
+        <p>Badges and trophies for milestones — first evolution, 100 commits, midnight coding</p>
+      </div>
+      <div class="roadmap-item reveal">
+        <div class="rm-label">📋 Planned</div>
+        <h3>Custom Creatures</h3>
+        <p>Design your own pixel art creatures with a built-in editor</p>
+      </div>
+      <div class="roadmap-item reveal">
+        <div class="rm-label">📋 Planned</div>
+        <h3>Leaderboard</h3>
+        <p>Global leaderboard — compete for the most evolved creatures</p>
+      </div>
+      <div class="roadmap-item reveal">
+        <div class="rm-label">📋 Planned</div>
+        <h3>Plugin System</h3>
+        <p>Extend TermiMon with custom agents, creatures, and integrations</p>
+      </div>
+    </div>
   </div>
 
   <footer>
-    <p>MIT © 2026 Yan Matagne · <a href="https://github.com/ymatagne/termimon">GitHub</a></p>
+    <div class="footer-inner">
+      <div class="footer-links">
+        <a href="index.html">Home</a>
+        <a href="creatures.html">Creatures</a>
+        <a href="commands.html">Commands</a>
+        <a href="roadmap.html">Roadmap</a>
+        <a href="https://github.com/ymatagne/termimon">GitHub</a>
+      </div>
+      <p class="footer-credit">Made with <span class="fire">🔥</span> by Yan Matagne · MIT License</p>
+    </div>
   </footer>
+
+  <script>
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+  </script>
 </body>
 </html>

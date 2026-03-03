@@ -4,129 +4,158 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Creatures — TermiMon</title>
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
   <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
   <nav>
     <div class="nav-inner">
-      <div class="logo">🎮 Termi<span>Mon</span></div>
-      <div class="links">
+      <a href="index.html" class="logo"><img src="assets/logo.svg" alt="">Termi<span>Mon</span></a>
+      <div class="nav-links" id="navLinks">
         <a href="index.html">Home</a>
-        <a href="install.html">Install</a>
         <a href="creatures.html" class="active">Creatures</a>
         <a href="commands.html">Commands</a>
         <a href="roadmap.html">Roadmap</a>
-        <a href="https://github.com/ymatagne/termimon">GitHub</a>
+        <a href="https://github.com/ymatagne/termimon" class="gh-link">★ GitHub</a>
       </div>
+      <button class="mobile-toggle" onclick="document.getElementById('navLinks').classList.toggle('open')">☰</button>
     </div>
   </nav>
 
-  <div class="container">
-    <section>
-      <h2>🐾 Creature Compendium</h2>
-      <p>Every AI coding agent gets a creature companion. Creatures are auto-assigned based on the agent type, or you can configure them manually.</p>
-    </section>
+  <div class="page-content">
+    <div class="section-label">Bestiary</div>
+    <h1>All Creatures</h1>
+    <p class="page-desc">Every companion in TermiMon, their evolution chains, and elemental matchups.</p>
 
-    <div class="creatures-grid">
-      <div class="creature-card">
-        <span class="sprite">🔥</span>
+    <div class="creatures-grid reveal-children">
+      <div class="creature-card" style="--creature-color: var(--fire)">
+        <div class="pixel-creature pixel-embercli creature-pixel"></div>
+        <div class="element-badge element-fire">🔥 Fire</div>
         <h3>Embercli</h3>
-        <span class="type type-fire">Fire</span>
-        <div class="agent">Claude Code</div>
-        <p class="desc">A fiery command-line spirit born from hot compilation loops. Embercli thrives on fast execution — the more code your agent writes, the brighter its flames burn. Evolution unlocks wing-like fire trails.</p>
+        <p class="creature-desc">Born from hot loops and burning deadlines. Strong against Grass and Dark, weak to Water.</p>
+        <div class="evo-chain">Spark <span class="arrow">→</span> Embercli <span class="arrow">→</span> Infernocli</div>
       </div>
-      <div class="creature-card">
-        <span class="sprite">⚡</span>
+      <div class="creature-card" style="--creature-color: var(--electric)">
+        <div class="pixel-creature pixel-voltprompt creature-pixel"></div>
+        <div class="element-badge element-electric">⚡ Electric</div>
         <h3>Voltprompt</h3>
-        <span class="type type-electric">Electric</span>
-        <div class="agent">Codex</div>
-        <p class="desc">A crackling prompt engineer that feeds on token throughput. Voltprompt's static charge builds with each API call. At full evolution, lightning arcs between its antenna tips.</p>
+        <p class="creature-desc">Crackles with static from rapid-fire prompts. Strong against Water, weak to Grass.</p>
+        <div class="evo-chain">Zapplet <span class="arrow">→</span> Voltprompt <span class="arrow">→</span> Gigavolt</div>
       </div>
-      <div class="creature-card">
-        <span class="sprite">💧</span>
+      <div class="creature-card" style="--creature-color: var(--water)">
+        <div class="pixel-creature pixel-shelloise creature-pixel"></div>
+        <div class="element-badge element-water">💧 Water</div>
         <h3>Shelloise</h3>
-        <span class="type type-water">Water</span>
-        <div class="agent">aider</div>
-        <p class="desc">A calm, resilient shell dweller deeply connected to Unix pipes. Shelloise flows between files like water through streams. Its shell hardens with evolution, gaining coral-like patterns.</p>
+        <p class="creature-desc">Calm and steady, carries cached knowledge. Strong against Fire and Rust, weak to Electric.</p>
+        <div class="evo-chain">Droplet <span class="arrow">→</span> Shelloise <span class="arrow">→</span> Tidebreaker</div>
       </div>
-      <div class="creature-card">
-        <span class="sprite">🦀</span>
+      <div class="creature-card" style="--creature-color: var(--rust)">
+        <div class="pixel-creature pixel-rustacean creature-pixel"></div>
+        <div class="element-badge element-rust">🦀 Rust</div>
         <h3>Rustacean</h3>
-        <span class="type type-steel">Steel</span>
-        <div class="agent">Cursor</div>
-        <p class="desc">Forged in metal and memory-safe from birth. Rustacean compiles on first try and never panics (well, almost). Evolution adds chrome plating and gear-like appendages.</p>
+        <p class="creature-desc">Memory-safe claws, zero-cost abstractions. Strong against Electric and Dark, weak to Water.</p>
+        <div class="evo-chain">Ferrite <span class="arrow">→</span> Rustacean <span class="arrow">→</span> Oxidrake</div>
       </div>
-      <div class="creature-card">
-        <span class="sprite">🌿</span>
+      <div class="creature-card" style="--creature-color: var(--grass)">
+        <div class="pixel-creature pixel-pythorn creature-pixel"></div>
+        <div class="element-badge element-grass">🌿 Grass</div>
         <h3>Pythorn</h3>
-        <span class="type type-grass">Grass</span>
-        <div class="agent">Copilot / Continue / Cline</div>
-        <p class="desc">A vine-wrapped creature that grows steadily, photosynthesizing from context windows. Pythorn wraps around problems and squeezes out solutions. Evolves thorny defensive patterns.</p>
+        <p class="creature-desc">Grows through every codebase like ivy. Strong against Water and Electric, weak to Fire.</p>
+        <div class="evo-chain">Seedling <span class="arrow">→</span> Pythorn <span class="arrow">→</span> Thornweave</div>
       </div>
-      <div class="creature-card">
-        <span class="sprite">🦇</span>
+      <div class="creature-card" style="--creature-color: var(--dark)">
+        <div class="pixel-creature pixel-gitbat creature-pixel"></div>
+        <div class="element-badge element-dark">🦇 Dark</div>
         <h3>Gitbat</h3>
-        <span class="type type-dark">Dark</span>
-        <div class="agent">Generic / Unknown</div>
-        <p class="desc">Lurks in the shadows of repositories, echolocating through commit history. Gitbat appears for any unrecognized agent. Evolution grants it larger wings and glowing eyes.</p>
+        <p class="creature-desc">Lurks in repos, sees through merge conflicts. Strong against Grass, weak to Fire and Rust.</p>
+        <div class="evo-chain">Nibbler <span class="arrow">→</span> Gitbat <span class="arrow">→</span> Shadowfork</div>
       </div>
     </div>
 
-    <section>
-      <h2>🏆 Evolution System</h2>
-      <p>Creatures evolve as their agents work. XP is earned from:</p>
-      <ul style="color:var(--text-dim); padding-left: 20px; line-height: 2.2">
-        <li>File writes and reads</li>
-        <li>Shell commands executed</li>
-        <li>Git operations (commits, pushes)</li>
-        <li>Token usage</li>
-        <li>Successful task completions</li>
-      </ul>
+    <!-- MATCHUP CHART -->
+    <section class="reveal" style="margin-top: 80px;">
+      <div class="section-label">Type Chart</div>
+      <h2 class="section-title">Elemental Matchups</h2>
+      <p class="section-desc">2× = super effective, ½× = not very effective, 1× = neutral</p>
 
-      <h3>Evolution Stages</h3>
-      <table class="cmd-table">
-        <thead><tr><th>Stage</th><th>XP Required</th><th>Changes</th></tr></thead>
-        <tbody>
-          <tr><td><strong>Stage 1</strong> — Base</td><td>0 XP</td><td>Base sprite, simple animations</td></tr>
-          <tr><td><strong>Stage 2</strong> — Evolved</td><td>100 XP</td><td>Enhanced sprite, new details, faster animations</td></tr>
-          <tr><td><strong>Stage 3</strong> — Final</td><td>500 XP</td><td>Full sprite with special effects and unique idle animation</td></tr>
-        </tbody>
-      </table>
+      <div class="matchup-grid">
+        <div class="cell header"></div>
+        <div class="cell header">🔥</div>
+        <div class="cell header">⚡</div>
+        <div class="cell header">💧</div>
+        <div class="cell header">🦀</div>
+        <div class="cell header">🌿</div>
+        <div class="cell header">🦇</div>
 
-      <h3>Evolution Names</h3>
-      <table class="cmd-table">
-        <thead><tr><th>Type</th><th>Stage 1</th><th>Stage 2 (100 XP)</th><th>Stage 3 (500 XP)</th></tr></thead>
-        <tbody>
-          <tr><td>🔥 Fire</td><td>Embercli</td><td>Blazecli</td><td>Infernocli</td></tr>
-          <tr><td>⚡ Electric</td><td>Voltprompt</td><td>Sparkprompt</td><td>Thunderprompt</td></tr>
-          <tr><td>💧 Water</td><td>Shelloise</td><td>Streamoise</td><td>Tidaloise</td></tr>
-          <tr><td>🦀 Rust</td><td>Rustacean</td><td>Chromacean</td><td>Titanacean</td></tr>
-          <tr><td>🌿 Grass</td><td>Pythorn</td><td>Junipythorn</td><td>Sequoiathorn</td></tr>
-          <tr><td>🦇 Dark</td><td>Gitbat</td><td>Repobat</td><td>Monobat</td></tr>
-        </tbody>
-      </table>
-    </section>
+        <div class="cell header">🔥 ATK</div>
+        <div class="cell neutral">1×</div>
+        <div class="cell neutral">1×</div>
+        <div class="cell weak">½×</div>
+        <div class="cell neutral">1×</div>
+        <div class="cell super">2×</div>
+        <div class="cell super">2×</div>
 
-    <section>
-      <h2>🎬 Animation States</h2>
-      <p>Each creature has multiple animation states that reflect what the agent is doing:</p>
-      <table class="cmd-table">
-        <thead><tr><th>State</th><th>Trigger</th><th>Animation</th></tr></thead>
-        <tbody>
-          <tr><td><strong>Idle</strong></td><td>Agent waiting</td><td>Gentle breathing motion</td></tr>
-          <tr><td><strong>Typing</strong></td><td>Agent writing code</td><td>Fast paw/hand movement</td></tr>
-          <tr><td><strong>Reading</strong></td><td>Agent reading files</td><td>Eye scanning motion</td></tr>
-          <tr><td><strong>Thinking</strong></td><td>Agent planning</td><td>Thought bubble animation</td></tr>
-          <tr><td><strong>Sleeping</strong></td><td>Agent inactive >5min</td><td>Dimmed sprite, Z's</td></tr>
-          <tr><td><strong>Celebrating</strong></td><td>Task completed</td><td>Jump/sparkle effect</td></tr>
-          <tr><td><strong>Error</strong></td><td>Agent hit an error</td><td>Red flash, shake</td></tr>
-        </tbody>
-      </table>
+        <div class="cell header">⚡ ATK</div>
+        <div class="cell neutral">1×</div>
+        <div class="cell neutral">1×</div>
+        <div class="cell super">2×</div>
+        <div class="cell weak">½×</div>
+        <div class="cell weak">½×</div>
+        <div class="cell neutral">1×</div>
+
+        <div class="cell header">💧 ATK</div>
+        <div class="cell super">2×</div>
+        <div class="cell weak">½×</div>
+        <div class="cell neutral">1×</div>
+        <div class="cell super">2×</div>
+        <div class="cell weak">½×</div>
+        <div class="cell neutral">1×</div>
+
+        <div class="cell header">🦀 ATK</div>
+        <div class="cell neutral">1×</div>
+        <div class="cell super">2×</div>
+        <div class="cell weak">½×</div>
+        <div class="cell neutral">1×</div>
+        <div class="cell neutral">1×</div>
+        <div class="cell super">2×</div>
+
+        <div class="cell header">🌿 ATK</div>
+        <div class="cell weak">½×</div>
+        <div class="cell super">2×</div>
+        <div class="cell super">2×</div>
+        <div class="cell neutral">1×</div>
+        <div class="cell neutral">1×</div>
+        <div class="cell weak">½×</div>
+
+        <div class="cell header">🦇 ATK</div>
+        <div class="cell weak">½×</div>
+        <div class="cell neutral">1×</div>
+        <div class="cell neutral">1×</div>
+        <div class="cell weak">½×</div>
+        <div class="cell super">2×</div>
+        <div class="cell neutral">1×</div>
+      </div>
     </section>
   </div>
 
   <footer>
-    <p>MIT © 2026 Yan Matagne · <a href="https://github.com/ymatagne/termimon">GitHub</a></p>
+    <div class="footer-inner">
+      <div class="footer-links">
+        <a href="index.html">Home</a>
+        <a href="creatures.html">Creatures</a>
+        <a href="commands.html">Commands</a>
+        <a href="roadmap.html">Roadmap</a>
+        <a href="https://github.com/ymatagne/termimon">GitHub</a>
+      </div>
+      <p class="footer-credit">Made with <span class="fire">🔥</span> by Yan Matagne · MIT License</p>
+    </div>
   </footer>
+
+  <script>
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.reveal, .reveal-children').forEach(el => observer.observe(el));
+  </script>
 </body>
 </html>
