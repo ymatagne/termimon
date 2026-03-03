@@ -119,6 +119,11 @@ impl DashApp {
                     "Agent not in a tmux pane".to_string(),
                     Instant::now(),
                 ));
+            } else if pane_id.starts_with("pid-") {
+                self.flash_msg = Some((
+                    "Agent detected via process scan — no tmux pane to switch to".to_string(),
+                    Instant::now(),
+                ));
             } else {
                 self.switch_target = Some(pane_id.clone());
             }
@@ -203,13 +208,22 @@ pub async fn run() -> Result<()> {
 
 /// Execute tmux pane focus after dashboard exits cleanly.
 fn execute_tmux_switch(pane_id: &str) {
+    // Only attempt tmux switch for real tmux pane IDs (start with %)
+    if !pane_id.starts_with('%') {
+        return;
+    }
     // First select the window containing the pane, then focus the pane
+    // Suppress stderr so tmux errors don't pollute the terminal after exit
     let _ = std::process::Command::new("tmux")
         .args(["select-pane", "-t", pane_id])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
         .status();
     // Also try to select the window (pane_id like %3 belongs to some window)
     let _ = std::process::Command::new("tmux")
         .args(["select-window", "-t", pane_id])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
         .status();
 }
 
@@ -925,9 +939,9 @@ pub async fn switch_command(number: Option<usize>) -> Result<()> {
 
     let agent = &status.agents[idx];
 
-    if agent.pane_id.is_empty() {
+    if agent.pane_id.is_empty() || agent.pane_id.starts_with("pid-") {
         println!(
-            "⚠ {} ({}) is not in a tmux pane — cannot switch.",
+            "⚠ {} ({}) was detected via process scan — no tmux pane to switch to.",
             agent.creature_name, agent.kind
         );
         return Ok(());

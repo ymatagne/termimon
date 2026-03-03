@@ -231,9 +231,101 @@ fn parse_activity_line(line: &str) -> Option<ActivityEvent> {
             }
         }
 
-        // Assistant response messages
+        // Assistant response messages — may contain tool_use blocks in content
         "assistant" => {
-            // Check for usage info
+            // First, check for tool_use events inside message.content[]
+            let content_blocks = obj.get("message")
+                .and_then(|m| m.get("content"))
+                .and_then(|c| c.as_array());
+
+            let mut tool_events: Vec<ActivityEvent> = Vec::new();
+            if let Some(blocks) = content_blocks {
+                for block in blocks {
+                    let block_type = block.get("type").and_then(|v| v.as_str()).unwrap_or("");
+                    if block_type == "tool_use" {
+                        let tool_name = block.get("name").and_then(|v| v.as_str()).unwrap_or("");
+                        let input = block.get("input").and_then(|v| v.as_object());
+                        let evt = match tool_name {
+                            "Bash" | "bash" => {
+                                let cmd = input
+                                    .and_then(|i| i.get("command"))
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("...");
+                                let short_cmd = truncate_str(cmd, 60);
+                                Some(ActivityEvent {
+                                    timestamp,
+                                    agent_icon: agent_icon.clone(),
+                                    agent_name: agent_name.clone(),
+                                    message: format!("ran `{short_cmd}`"),
+                                    event_type: EventType::Command,
+                                })
+                            }
+                            "Write" | "write" | "write_file" => {
+                                let file = input
+                                    .and_then(|i| i.get("file_path").or_else(|| i.get("path")))
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("file");
+                                let short = short_path(file);
+                                Some(ActivityEvent {
+                                    timestamp,
+                                    agent_icon: agent_icon.clone(),
+                                    agent_name: agent_name.clone(),
+                                    message: format!("wrote {short}"),
+                                    event_type: EventType::FileWrite,
+                                })
+                            }
+                            "Edit" | "edit" | "edit_file" => {
+                                let file = input
+                                    .and_then(|i| i.get("file_path").or_else(|| i.get("path")))
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("file");
+                                let short = short_path(file);
+                                Some(ActivityEvent {
+                                    timestamp,
+                                    agent_icon: agent_icon.clone(),
+                                    agent_name: agent_name.clone(),
+                                    message: format!("edited {short}"),
+                                    event_type: EventType::FileWrite,
+                                })
+                            }
+                            "Read" | "read" | "read_file" => {
+                                let file = input
+                                    .and_then(|i| i.get("file_path").or_else(|| i.get("path")))
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("file");
+                                let short = short_path(file);
+                                Some(ActivityEvent {
+                                    timestamp,
+                                    agent_icon: agent_icon.clone(),
+                                    agent_name: agent_name.clone(),
+                                    message: format!("read {short}"),
+                                    event_type: EventType::FileRead,
+                                })
+                            }
+                            _ if !tool_name.is_empty() => {
+                                Some(ActivityEvent {
+                                    timestamp,
+                                    agent_icon: agent_icon.clone(),
+                                    agent_name: agent_name.clone(),
+                                    message: format!("used tool: {tool_name}"),
+                                    event_type: EventType::Command,
+                                })
+                            }
+                            _ => None,
+                        };
+                        if let Some(e) = evt {
+                            tool_events.push(e);
+                        }
+                    }
+                }
+            }
+
+            // If we found tool_use events, return the last one (most interesting)
+            if let Some(last_tool) = tool_events.into_iter().last() {
+                return Some(last_tool);
+            }
+
+            // Otherwise check for usage/token info
             let usage = obj.get("message")
                 .and_then(|m| m.get("usage"))
                 .and_then(|u| u.as_object());
@@ -241,22 +333,26 @@ fn parse_activity_line(line: &str) -> Option<ActivityEvent> {
                 let input_tok = usage.get("input_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
                 let output_tok = usage.get("output_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
                 let total = input_tok + output_tok;
-                let model = obj.get("message")
-                    .and_then(|m| m.get("model"))
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("unknown");
-                let cost_cents = cost::compute_cost_cents(input_tok, output_tok, model);
-                Some(ActivityEvent {
-                    timestamp,
-                    agent_icon,
-                    agent_name,
-                    message: format!(
-                        "used {} tokens ({})",
-                        cost::format_tokens(total),
-                        cost::format_cost(cost_cents),
-                    ),
-                    event_type: EventType::TokenUsage,
-                })
+                if total > 0 {
+                    let model = obj.get("message")
+                        .and_then(|m| m.get("model"))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("unknown");
+                    let cost_cents = cost::compute_cost_cents(input_tok, output_tok, model);
+                    Some(ActivityEvent {
+                        timestamp,
+                        agent_icon,
+                        agent_name,
+                        message: format!(
+                            "used {} tokens ({})",
+                            cost::format_tokens(total),
+                            cost::format_cost(cost_cents),
+                        ),
+                        event_type: EventType::TokenUsage,
+                    })
+                } else {
+                    None // Skip zero-token usage events
+                }
             } else {
                 Some(ActivityEvent {
                     timestamp,

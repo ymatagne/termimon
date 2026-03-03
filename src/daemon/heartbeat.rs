@@ -53,7 +53,15 @@ pub async fn run_heartbeat(mut shutdown: watch::Receiver<bool>) {
 
         // Periodically scan transcripts for cost & activity data
         if cycle % SCAN_INTERVAL == 1 {
-            cost_tracker.scan_all_transcripts();
+            // Build working_dir → agent_id mapping so costs are keyed correctly
+            let workdir_to_agent_id: HashMap<String, String> = tracked
+                .values()
+                .filter(|a| !a.agent_id.is_empty())
+                .filter_map(|a| {
+                    a.working_dir.as_ref().map(|wd| (wd.clone(), a.agent_id.clone()))
+                })
+                .collect();
+            cost_tracker.scan_all_transcripts(&workdir_to_agent_id);
             activity_feed.scan_transcripts();
 
             // Persist daily stats (best-effort)

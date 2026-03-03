@@ -220,6 +220,26 @@ fn parse_token_line(line: &str, session_id: &str) -> Option<TokenUsageEvent> {
     })
 }
 
+// ─── Path → working directory mapping ────────────────────────────────────
+
+/// Extract the original working directory from a Claude JSONL file path.
+///
+/// Claude stores transcripts at paths like:
+///   ~/.claude/projects/-private-tmp-termimon/abc123.jsonl
+/// The parent directory name encodes the working dir with "-" replacing "/",
+/// so "-private-tmp-termimon" → "/private/tmp/termimon".
+pub fn session_working_dir(file_path: &std::path::Path) -> Option<String> {
+    let parent = file_path.parent()?;
+    let dir_name = parent.file_name()?.to_str()?;
+    // The dir name starts with "-" which represents the leading "/"
+    // Each "-" in the name represents a "/" separator
+    if dir_name.starts_with('-') {
+        Some(dir_name.replace('-', "/"))
+    } else {
+        None
+    }
+}
+
 // ─── Tracker operations ──────────────────────────────────────────────────
 
 impl AgentCostTracker {
@@ -261,8 +281,9 @@ impl AgentCostTracker {
     }
 
     /// Scan all Claude transcripts and rebuild cost data.
-    /// This is an incremental-friendly interface: for now it does a full scan.
-    pub fn scan_all_transcripts(&mut self) {
+    /// Accepts a mapping of working_dir → agent_id so costs are keyed by agent_id
+    /// (matching the dashboard's expectations) instead of raw session IDs.
+    pub fn scan_all_transcripts(&mut self, workdir_to_agent_id: &std::collections::HashMap<String, String>) {
         let files = find_transcript_files();
         // Group by session
         for file in &files {
@@ -270,9 +291,22 @@ impl AgentCostTracker {
             if events.is_empty() {
                 continue;
             }
-            let session_id = events[0].session_id.clone();
-            // Use session_id as agent_id proxy (each JSONL = one session)
-            self.ingest(&session_id, &events);
+            // Try to map this file's working directory to a tracked agent_id
+            let key = if let Some(wd) = session_working_dir(&file) {
+                // Try exact match first, then try with /private prefix (macOS)
+                workdir_to_agent_id.get(&wd)
+                    .or_else(|| workdir_to_agent_id.get(&format!("/private{}", wd)))
+                    .or_else(|| {
+                        // Also try stripping /private from wd to match
+                        let stripped = wd.strip_prefix("/private").unwrap_or(&wd);
+                        workdir_to_agent_id.get(stripped)
+                    })
+                    .cloned()
+                    .unwrap_or_else(|| events[0].session_id.clone())
+            } else {
+                events[0].session_id.clone()
+            };
+            self.ingest(&key, &events);
         }
     }
 
