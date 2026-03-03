@@ -324,6 +324,11 @@ fn tick(
     let mut agent_keys: Vec<String> = tracked.keys().cloned().collect();
     agent_keys.sort();
 
+    // Pre-collect used species from active agents (for rotation)
+    let mut active_species: std::collections::HashSet<String> = tracked.values()
+        .filter_map(|a| a.creature_species.clone())
+        .collect();
+
     for key in &agent_keys {
         let agent = match tracked.get_mut(key) {
             Some(a) => a,
@@ -367,17 +372,13 @@ fn tick(
                 let (species_str, binding, is_new) = if let Some(existing) = bindings.get(&agent_id) {
                     (existing.creature_species.clone(), existing.clone(), false)
                 } else {
-                    // Find the next unused species by checking all existing bindings
+                    // Find the next unused species by checking ACTIVE agents only
                     drop(bindings);
-                    let all_bindings = identity::load_bindings();
-                    let used_species: std::collections::HashSet<&str> = all_bindings.values()
-                        .map(|b| b.creature_species.as_str())
-                        .collect();
                     // Try each index until we find an unused species
                     let mut species = crate::creatures::sprites::species_for_agent(&agent_kind_str);
                     for idx in 0..6 {
                         let candidate = crate::creatures::sprites::species_for_agent_idx(&agent_kind_str, idx);
-                        if !used_species.contains(candidate) {
+                        if !active_species.contains(candidate as &str) {
                             species = candidate;
                             break;
                         }
@@ -387,6 +388,7 @@ fn tick(
                 };
 
                 agent.creature_species = Some(species_str.clone());
+                active_species.insert(species_str.clone());
 
                 // Ensure binding exists
                 if !is_new {
