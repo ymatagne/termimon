@@ -33,7 +33,10 @@ pub async fn run_heartbeat(mut shutdown: watch::Receiver<bool>) {
         }
 
         if let Err(e) = tick(&registry, &config, &mut tracked) {
-            tracing::warn!("Heartbeat error: {e}");
+            tracing::warn!("Heartbeat error: {e:#}");
+            if cycle <= 3 {
+                eprintln!("TermiMon heartbeat error: {e:#}");
+            }
         }
         cycle += 1;
 

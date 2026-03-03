@@ -68,12 +68,23 @@ pub async fn start(foreground: bool) -> Result<()> {
     } else {
         println!("🎮 Starting TermiMon daemon...");
         let exe = std::env::current_exe().context("Could not determine executable path")?;
-        let child = std::process::Command::new(exe)
-            .args(["start", "--foreground"])
+        let log_path = runtime_dir().join("termimon.log");
+        let log_file = std::fs::File::create(&log_path)
+            .context("Failed to create log file")?;
+        let log_err = log_file.try_clone().context("Failed to clone log file")?;
+        let mut cmd = std::process::Command::new(exe);
+        cmd.args(["start", "--foreground"])
             .stdin(std::process::Stdio::null())
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .spawn()
+            .stdout(log_file)
+            .stderr(log_err);
+        // Preserve TMUX env var so daemon can talk to tmux server
+        if let Ok(tmux_env) = std::env::var("TMUX") {
+            cmd.env("TMUX", &tmux_env);
+        }
+        if let Ok(tmux_tmpdir) = std::env::var("TMUX_TMPDIR") {
+            cmd.env("TMUX_TMPDIR", &tmux_tmpdir);
+        }
+        let child = cmd.spawn()
             .context("Failed to spawn daemon process")?;
         println!("🎮 TermiMon daemon started (PID {})", child.id());
         Ok(())
