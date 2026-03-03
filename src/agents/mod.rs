@@ -107,6 +107,7 @@ pub struct TrackedAgent {
     pub mem_mb: f64,
     pub working_dir: Option<String>,
     pub agent_id: String,
+    pub creature_species: Option<String>,
     pub state_since: Instant,
     pub last_activity: Instant,
 }
@@ -123,6 +124,7 @@ impl TrackedAgent {
             mem_mb: 0.0,
             working_dir: None,
             agent_id: String::new(),
+            creature_species: None,
             state_since: now,
             last_activity: now,
         }

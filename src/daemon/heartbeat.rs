@@ -342,20 +342,43 @@ fn tick(
 
             // Compute stable agent identity
             if agent.agent_id.is_empty() {
+                let agent_kind_str = agent.kind.to_string();
                 let agent_id = identity::compute_agent_id_with_pid(
-                    &agent.kind.to_string(),
+                    &agent_kind_str,
                     agent.working_dir.as_deref(),
                     agent.pid,
                 );
                 agent.agent_id = agent_id.clone();
 
-                // Restore or create creature binding
-                let species = crate::creatures::sprites::species_for_agent(&agent.kind.to_string());
-                let (binding, is_new) = identity::get_or_create_binding(&agent_id, species);
+                // Check if binding already exists (has a known species)
+                let bindings = identity::load_bindings();
+                let (species_str, binding, is_new) = if let Some(existing) = bindings.get(&agent_id) {
+                    (existing.creature_species.clone(), existing.clone(), false)
+                } else {
+                    // Count how many same-kind agents already have species assigned
+                    drop(bindings); // release before we need tracked
+                    // Can't borrow tracked here, count from identity file instead
+                    let all_bindings = identity::load_bindings();
+                    let default_species = crate::creatures::sprites::species_for_agent(&agent_kind_str);
+                    let same_species_count = all_bindings.values()
+                        .filter(|b| b.creature_species == default_species)
+                        .count();
+                    let species = crate::creatures::sprites::species_for_agent_idx(&agent_kind_str, same_species_count);
+                    let (b, _) = identity::get_or_create_binding(&agent_id, species);
+                    (species.to_string(), b, true)
+                };
+
+                agent.creature_species = Some(species_str.clone());
+
+                // Ensure binding exists
+                if !is_new {
+                    let _ = identity::get_or_create_binding(&agent_id, &species_str);
+                }
+
                 if is_new {
                     tracing::info!(
                         agent_id = %agent_id,
-                        species = %species,
+                        species = %species_str,
                         "New creature binding created"
                     );
                 } else {

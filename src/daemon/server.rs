@@ -48,7 +48,8 @@ pub struct ProductivitySnapshot {
 
 impl From<&TrackedAgent> for AgentSnapshot {
     fn from(a: &TrackedAgent) -> Self {
-        let species = crate::creatures::sprites::species_for_agent(&a.kind.to_string());
+        let species = a.creature_species.as_deref()
+            .unwrap_or_else(|| crate::creatures::sprites::species_for_agent(&a.kind.to_string()));
         let creature_def = crate::creatures::registry::get_creature_def(species);
 
         // Use identity bindings for XP/stage if available

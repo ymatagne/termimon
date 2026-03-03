@@ -257,19 +257,32 @@ pub fn sprite_for_agent(agent_kind: &str) -> &'static SpriteFrame {
 }
 
 /// Map agent kind to creature species name.
+/// Get default species for an agent kind (first instance).
 pub fn species_for_agent(agent_kind: &str) -> &'static str {
+    species_for_agent_idx(agent_kind, 0)
+}
+
+/// All available species, in rotation order.
+const ALL_SPECIES: &[&str] = &["embercli", "voltprompt", "shelloise", "rustacean", "pythorn", "gitbat"];
+
+/// Get species for an agent kind + instance index.
+/// First instance of each kind gets the default species, additional instances
+/// rotate through other species so each agent looks unique.
+pub fn species_for_agent_idx(agent_kind: &str, instance_idx: usize) -> &'static str {
     let lower = agent_kind.to_lowercase();
-    if lower.contains("claude") {
-        "embercli"
+    let primary = if lower.contains("claude") {
+        0 // embercli
     } else if lower.contains("codex") {
-        "voltprompt"
+        1 // voltprompt
     } else if lower.contains("aider") {
-        "shelloise"
+        2 // shelloise
     } else if lower.contains("cursor") {
-        "rustacean"
+        3 // rustacean
     } else if lower.contains("continue") || lower.contains("copilot") {
-        "pythorn"
+        4 // pythorn
     } else {
-        "gitbat"
-    }
+        5 // gitbat
+    };
+    let idx = (primary + instance_idx) % ALL_SPECIES.len();
+    ALL_SPECIES[idx]
 }
