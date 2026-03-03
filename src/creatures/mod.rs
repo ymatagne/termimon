@@ -55,6 +55,9 @@ pub enum Element {
     Fire,
     Electric,
     Water,
+    Rust,
+    Grass,
+    Dark,
 }
 
 impl fmt::Display for Element {
@@ -63,6 +66,9 @@ impl fmt::Display for Element {
             Element::Fire     => write!(f, "🔥 Fire"),
             Element::Electric => write!(f, "⚡ Electric"),
             Element::Water    => write!(f, "💧 Water"),
+            Element::Rust     => write!(f, "🦀 Rust"),
+            Element::Grass    => write!(f, "🌿 Grass"),
+            Element::Dark     => write!(f, "🦇 Dark"),
         }
     }
 }
@@ -73,6 +79,9 @@ impl Element {
             Element::Fire     => "🔥",
             Element::Electric => "⚡",
             Element::Water    => "💧",
+            Element::Rust     => "🦀",
+            Element::Grass    => "🌿",
+            Element::Dark     => "🦇",
         }
     }
 }

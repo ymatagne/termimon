@@ -7,6 +7,7 @@ use std::collections::HashMap;
 
 use crate::agents::{AgentKind, AgentState, DetectorRegistry, TrackedAgent};
 use crate::agents::detector;
+use crate::agents::identity;
 use crate::config;
 use crate::tmux::{pane, status};
 
@@ -195,6 +196,49 @@ fn tick(
             seen.contains(id)
         }
     });
+
+    // Post-pass: compute CPU/mem sums, working dir, and agent identity for all tracked agents
+    for agent in tracked.values_mut() {
+        if let Some(pid) = agent.pid {
+            // Sum CPU and memory across all descendant processes
+            let descendants = detector::descendant_processes(pid, &procs);
+            agent.cpu_pct = descendants.iter().map(|p| p.cpu_pct).sum();
+            agent.mem_mb = descendants.iter().map(|p| p.mem_mb).sum();
+
+            // Detect working directory on first discovery (cache it)
+            if agent.working_dir.is_none() {
+                agent.working_dir = detector::get_working_dir(pid);
+            }
+
+            // Compute stable agent identity
+            if agent.agent_id.is_empty() {
+                let agent_id = identity::compute_agent_id(
+                    &agent.kind.to_string(),
+                    agent.working_dir.as_deref(),
+                );
+                agent.agent_id = agent_id.clone();
+
+                // Restore or create creature binding
+                let species = crate::creatures::sprites::species_for_agent(&agent.kind.to_string());
+                let (binding, is_new) = identity::get_or_create_binding(&agent_id, species);
+                if is_new {
+                    tracing::info!(
+                        agent_id = %agent_id,
+                        species = %species,
+                        "New creature binding created"
+                    );
+                } else {
+                    tracing::info!(
+                        agent_id = %agent_id,
+                        xp = binding.xp,
+                        stage = binding.stage,
+                        sessions = binding.sessions,
+                        "Restored creature binding"
+                    );
+                }
+            }
+        }
+    }
 
     // Update status bar
     update_status(tracked, config)?;

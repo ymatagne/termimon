@@ -145,6 +145,7 @@ pub async fn status() -> Result<()> {
                             } else {
                                 for agent in &status.agents {
                                     let pid_str = agent.pid.map(|p| format!(" pid:{}", p)).unwrap_or_default();
+                                    let dir_str = agent.working_dir.as_deref().unwrap_or("?");
                                     println!(
                                         "  {} {} (Stage {}) — {} [{}]{}",
                                         agent.element_icon,
@@ -153,6 +154,13 @@ pub async fn status() -> Result<()> {
                                         agent.kind,
                                         agent.state,
                                         pid_str,
+                                    );
+                                    println!(
+                                        "    ID: {} | CPU: {:.1}% | Mem: {:.1} MB | Dir: {}",
+                                        agent.agent_id,
+                                        agent.cpu_pct,
+                                        agent.mem_mb,
+                                        dir_str,
                                     );
                                 }
                             }

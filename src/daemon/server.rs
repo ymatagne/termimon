@@ -19,6 +19,10 @@ pub struct AgentSnapshot {
     pub state: String,
     pub pane_id: String,
     pub pid: Option<u32>,
+    pub cpu_pct: f32,
+    pub mem_mb: f64,
+    pub working_dir: Option<String>,
+    pub agent_id: String,
     pub creature_species: String,
     pub creature_name: String,
     pub element_icon: String,
@@ -30,8 +34,22 @@ impl From<&TrackedAgent> for AgentSnapshot {
     fn from(a: &TrackedAgent) -> Self {
         let species = crate::creatures::sprites::species_for_agent(&a.kind.to_string());
         let creature_def = crate::creatures::registry::get_creature_def(species);
+
+        // Use identity bindings for XP/stage if available
+        let bindings = crate::agents::identity::load_bindings();
+        let (xp, stage) = if !a.agent_id.is_empty() {
+            if let Some(binding) = bindings.get(&a.agent_id) {
+                (binding.xp, binding.stage)
+            } else {
+                (0, 1)
+            }
+        } else {
+            (0, 1)
+        };
+
+        let stage_idx = (stage as usize).saturating_sub(1).min(2);
         let (creature_name, element_icon) = match creature_def {
-            Some(def) => (def.evolution_names[0].to_string(), def.element.icon().to_string()),
+            Some(def) => (def.evolution_names[stage_idx].to_string(), def.element.icon().to_string()),
             None => ("Unknown".to_string(), "❓".to_string()),
         };
         Self {
@@ -39,11 +57,15 @@ impl From<&TrackedAgent> for AgentSnapshot {
             state: a.state.to_string(),
             pane_id: a.pane_id.clone(),
             pid: a.pid,
+            cpu_pct: a.cpu_pct,
+            mem_mb: a.mem_mb,
+            working_dir: a.working_dir.clone(),
+            agent_id: a.agent_id.clone(),
             creature_species: species.to_string(),
             creature_name,
             element_icon,
-            stage: 1,
-            xp: 0,
+            stage,
+            xp,
         }
     }
 }

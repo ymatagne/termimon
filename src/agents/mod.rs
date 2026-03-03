@@ -8,6 +8,7 @@ pub mod claude;
 pub mod codex;
 pub mod detector;
 pub mod generic;
+pub mod identity;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -93,6 +94,10 @@ pub struct TrackedAgent {
     pub state: AgentState,
     pub pane_id: String,
     pub pid: Option<u32>,
+    pub cpu_pct: f32,
+    pub mem_mb: f64,
+    pub working_dir: Option<String>,
+    pub agent_id: String,
     pub state_since: Instant,
     pub last_activity: Instant,
 }
@@ -105,6 +110,10 @@ impl TrackedAgent {
             state: AgentState::Unknown,
             pane_id,
             pid: None,
+            cpu_pct: 0.0,
+            mem_mb: 0.0,
+            working_dir: None,
+            agent_id: String::new(),
             state_since: now,
             last_activity: now,
         }

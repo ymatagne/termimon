@@ -107,6 +107,107 @@ pub const SHELLOISE_IDLE_1: SpriteFrame = [
     [  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T], // 15
 ];
 
+// ── Rustacean (Rust) ─────────────────────────────────────────────────────────
+//
+//  An orange crab with claws — cute face, raised pincers
+//
+
+// Rust/crab palette
+const R1: Color = Color::new(230, 100, 30);   // bright orange
+const R2: Color = Color::new(200, 70, 20);    // dark orange
+const R3: Color = Color::new(255, 140, 50);   // light orange
+const R4: Color = Color::new(180, 50, 10);    // deep red-orange
+const R5: Color = Color::new(255, 180, 80);   // highlight / belly
+const RE: Color = Color::new(20, 20, 20);     // eyes
+
+pub const RUSTACEAN_IDLE_1: SpriteFrame = [
+    //  0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15
+    [  T,  T, R4,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T, R4,  T,  T], // 0  claw tips
+    [  T, R4, R2, R4,  T,  T,  T,  T,  T,  T,  T,  T, R4, R2, R4,  T], // 1  claws open
+    [  T, R2, R4, R2,  T,  T,  T,  T,  T,  T,  T,  T, R2, R4, R2,  T], // 2  claw arms
+    [  T,  T, R2, R1,  T,  T,  T,  T,  T,  T,  T,  T, R1, R2,  T,  T], // 3  claw arms
+    [  T,  T,  T, R2, R1,  T,  T,  T,  T,  T,  T, R1, R2,  T,  T,  T], // 4  arms to body
+    [  T,  T,  T,  T, R2, R1, R1, R1, R1, R1, R1, R2,  T,  T,  T,  T], // 5  shell top
+    [  T,  T,  T, R2, R1, R1, R3, R1, R1, R3, R1, R1, R2,  T,  T,  T], // 6  shell
+    [  T,  T,  T, R1, R1, RE, RE, R1, R1, RE, RE, R1, R1,  T,  T,  T], // 7  eyes
+    [  T,  T,  T, R1, R1, RE, RE, R1, R1, RE, RE, R1, R1,  T,  T,  T], // 8  eyes
+    [  T,  T,  T, R1, R1, R1, R1, R5, R1, R1, R1, R1, R1,  T,  T,  T], // 9  mouth
+    [  T,  T, R2, R1, R3, R1, R5, R5, R5, R1, R3, R1, R2,  T,  T,  T], // 10 belly
+    [  T,  T, R2, R1, R1, R1, R1, R5, R1, R1, R1, R1, R2,  T,  T,  T], // 11 body
+    [  T,  T,  T, R4, R2, R1, R1, R1, R1, R1, R2, R4,  T,  T,  T,  T], // 12 bottom
+    [  T,  T, R4, R4, T,  R2, R4,  T, R4, R2,  T, R4, R4,  T,  T,  T], // 13 legs
+    [  T, R4, R4,  T,  T, R4, R4,  T, R4, R4,  T,  T, R4, R4,  T,  T], // 14 feet
+    [  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T], // 15
+];
+
+// ── Pythorn (Grass) ──────────────────────────────────────────────────────────
+//
+//  A green snake/vine creature coiled with leaf details
+//
+
+// Grass/vine palette
+const G1: Color = Color::new(60, 180, 80);    // bright green
+const G2: Color = Color::new(40, 140, 55);    // medium green
+const G3: Color = Color::new(30, 100, 40);    // dark green
+const G4: Color = Color::new(100, 210, 100);  // light green / highlight
+const G5: Color = Color::new(140, 230, 120);  // leaf bright
+const G6: Color = Color::new(80, 160, 60);    // leaf dark
+const GE: Color = Color::new(200, 50, 50);    // eyes (red, snake-like)
+
+pub const PYTHORN_IDLE_1: SpriteFrame = [
+    //  0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15
+    [  T,  T,  T,  T,  T,  T, G5,  T,  T,  T,  T,  T,  T,  T,  T,  T], // 0  leaf tip
+    [  T,  T,  T,  T,  T, G5, G6, G5,  T,  T,  T,  T,  T,  T,  T,  T], // 1  leaf
+    [  T,  T,  T,  T, G6, G5, G2, G6, G5,  T,  T,  T,  T,  T,  T,  T], // 2  leaf base
+    [  T,  T,  T,  T,  T, G3, G2, G3,  T,  T,  T,  T,  T,  T,  T,  T], // 3  stem
+    [  T,  T,  T,  T, G2, G1, G1, G1, G2,  T,  T,  T,  T,  T,  T,  T], // 4  head top
+    [  T,  T,  T, G2, G1, G1, G1, G1, G1, G2,  T,  T,  T,  T,  T,  T], // 5  head
+    [  T,  T,  T, G1, GE, GE, G1, GE, GE, G1,  T,  T,  T,  T,  T,  T], // 6  eyes
+    [  T,  T,  T, G2, G1, G1, G4, G1, G1, G2,  T,  T,  T,  T,  T,  T], // 7  mouth
+    [  T,  T, G3, G2, G1, G1, G1, G1, G1, G2, G3,  T,  T,  T,  T,  T], // 8  neck
+    [  T,  T, G2, G1, G1, G4, G1, G4, G1, G1, G2,  T,  T,  T,  T,  T], // 9  coil top
+    [  T, G3, G2, G1, G1, G1, G1, G1, G1, G1, G2, G3,  T,  T,  T,  T], // 10 coil
+    [  T, G2, G1, G4, G1, G1, G1, G1, G1, G4, G1, G2,  T, G5,  T,  T], // 11 coil + leaf
+    [  T,  T, G2, G1, G1, G1, G1, G1, G1, G1, G2, G5, G6, G5,  T,  T], // 12 coil bottom + leaf
+    [  T,  T, G3, G2, G2, G1, G1, G1, G2, G2, G3, G5, G6,  T,  T,  T], // 13 tail
+    [  T,  T,  T, G3, G3, G2, G2, G2, G3, G3,  T,  T,  T,  T,  T,  T], // 14 tail tip
+    [  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T], // 15
+];
+
+// ── Gitbat (Dark) ────────────────────────────────────────────────────────────
+//
+//  A purple bat with spread code-wings — cute face, pointy ears
+//
+
+// Dark/bat palette
+const D1: Color = Color::new(140, 80, 200);   // bright purple
+const D2: Color = Color::new(100, 50, 160);   // medium purple
+const D3: Color = Color::new(70, 30, 120);    // dark purple
+const D4: Color = Color::new(180, 120, 240);  // light purple / highlight
+const D5: Color = Color::new(200, 160, 255);  // wing membrane
+const D6: Color = Color::new(50, 20, 90);     // darkest (wing bones)
+const DE: Color = Color::new(255, 220, 50);   // eyes (yellow, glowing)
+
+pub const GITBAT_IDLE_1: SpriteFrame = [
+    //  0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15
+    [  T,  T,  T,  T, D3,  T,  T,  T,  T,  T,  T, D3,  T,  T,  T,  T], // 0  ear tips
+    [  T,  T,  T, D3, D2,  T,  T,  T,  T,  T,  T, D2, D3,  T,  T,  T], // 1  ears
+    [  T,  T,  T, D2, D1, D2, D1, D1, D1, D2, D1, D2,  T,  T,  T,  T], // 2  head top
+    [  T,  T,  T, D1, D1, D1, D1, D1, D1, D1, D1, D1,  T,  T,  T,  T], // 3  head
+    [  T,  T,  T, D1, DE, DE, D1, D1, D1, DE, DE, D1,  T,  T,  T,  T], // 4  eyes
+    [  T,  T,  T, D2, D1, D1, D1, D4, D1, D1, D1, D2,  T,  T,  T,  T], // 5  mouth (fangs)
+    [  T,  T,  T,  T, D2, D1, D4, D4, D4, D1, D2,  T,  T,  T,  T,  T], // 6  chin
+    [  T, D6, D3,  T, D3, D2, D1, D1, D1, D2, D3,  T, D3, D6,  T,  T], // 7  wing start + body
+    [ D6, D3, D5, D3, D2, D1, D1, D4, D1, D1, D2, D3, D5, D3, D6,  T], // 8  wings spread
+    [D6, D5, D5, D5, D3, D2, D1, D1, D1, D2, D3, D5, D5, D5, D6,  T], // 9  wings full
+    [  T, D6, D5, D5, D3, D3, D2, D1, D2, D3, D3, D5, D5, D6,  T,  T], // 10 wings lower
+    [  T,  T, D6, D5, D5, D3,  T, D2,  T, D3, D5, D5, D6,  T,  T,  T], // 11 wing tips
+    [  T,  T,  T, D6, D6,  T,  T, D3,  T,  T, D6, D6,  T,  T,  T,  T], // 12 wing tips
+    [  T,  T,  T,  T,  T,  T, D3, D3, D3,  T,  T,  T,  T,  T,  T,  T], // 13 feet
+    [  T,  T,  T,  T,  T,  T, D6,  T, D6,  T,  T,  T,  T,  T,  T,  T], // 14 claws
+    [  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T], // 15
+];
+
 // ── Backward compatibility alias ─────────────────────────────────────────────
 pub const EMBERCLI_IDLE: SpriteFrame = EMBERCLI_IDLE_1;
 
@@ -118,6 +219,9 @@ pub fn all_idle_sprites() -> Vec<(&'static str, &'static SpriteFrame)> {
         ("Embercli",    &EMBERCLI_IDLE_1),
         ("Voltprompt",  &VOLTPROMPT_IDLE_1),
         ("Shelloise",   &SHELLOISE_IDLE_1),
+        ("Rustacean",   &RUSTACEAN_IDLE_1),
+        ("Pythorn",     &PYTHORN_IDLE_1),
+        ("Gitbat",      &GITBAT_IDLE_1),
     ]
 }
 
@@ -127,6 +231,9 @@ pub fn sprite_for_species(name: &str) -> &'static SpriteFrame {
         "embercli"    => &EMBERCLI_IDLE_1,
         "voltprompt"  => &VOLTPROMPT_IDLE_1,
         "shelloise"   => &SHELLOISE_IDLE_1,
+        "rustacean"   => &RUSTACEAN_IDLE_1,
+        "pythorn"     => &PYTHORN_IDLE_1,
+        "gitbat"      => &GITBAT_IDLE_1,
         _ => &EMBERCLI_IDLE_1, // default fallback
     }
 }
@@ -140,8 +247,12 @@ pub fn sprite_for_agent(agent_kind: &str) -> &'static SpriteFrame {
         &VOLTPROMPT_IDLE_1
     } else if lower.contains("aider") {
         &SHELLOISE_IDLE_1
+    } else if lower.contains("cursor") {
+        &RUSTACEAN_IDLE_1
+    } else if lower.contains("continue") || lower.contains("copilot") {
+        &PYTHORN_IDLE_1
     } else {
-        &EMBERCLI_IDLE_1
+        &GITBAT_IDLE_1
     }
 }
 
@@ -154,7 +265,11 @@ pub fn species_for_agent(agent_kind: &str) -> &'static str {
         "voltprompt"
     } else if lower.contains("aider") {
         "shelloise"
+    } else if lower.contains("cursor") {
+        "rustacean"
+    } else if lower.contains("continue") || lower.contains("copilot") {
+        "pythorn"
     } else {
-        "embercli"
+        "gitbat"
     }
 }

@@ -11,13 +11,15 @@ use std::collections::HashMap;
 pub struct ProcessInfo {
     pub pid: u32,
     pub ppid: u32,
+    pub cpu_pct: f32,
+    pub mem_mb: f64,
     pub comm: String,
 }
 
-/// Get the process table via `ps`.
+/// Get the process table via `ps` (includes CPU % and RSS).
 pub fn list_processes() -> Result<Vec<ProcessInfo>> {
     let output = std::process::Command::new("ps")
-        .args(["-eo", "pid,ppid,comm"])
+        .args(["-eo", "pid,ppid,%cpu,rss,comm"])
         .output()
         .context("Failed to run ps")?;
 
@@ -26,21 +28,44 @@ pub fn list_processes() -> Result<Vec<ProcessInfo>> {
 
     for line in stdout.lines().skip(1) {
         let parts: Vec<&str> = line.split_whitespace().collect();
-        if parts.len() >= 3 {
+        if parts.len() >= 5 {
             let pid = parts[0].parse::<u32>().unwrap_or(0);
             let ppid = parts[1].parse::<u32>().unwrap_or(0);
-            let comm_full = parts[2..].join(" ");
+            let cpu_pct = parts[2].parse::<f32>().unwrap_or(0.0);
+            let rss_kb = parts[3].parse::<f64>().unwrap_or(0.0);
+            let mem_mb = rss_kb / 1024.0;
+            let comm_full = parts[4..].join(" ");
             let comm = comm_full
                 .rsplit('/')
                 .next()
                 .unwrap_or(&comm_full)
                 .to_string();
             if pid > 0 {
-                procs.push(ProcessInfo { pid, ppid, comm });
+                procs.push(ProcessInfo { pid, ppid, cpu_pct, mem_mb, comm });
             }
         }
     }
     Ok(procs)
+}
+
+/// Get the working directory of a process via `lsof`.
+pub fn get_working_dir(pid: u32) -> Option<String> {
+    let output = std::process::Command::new("lsof")
+        .args(["-d", "cwd", "-p", &pid.to_string(), "-Fn"])
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .output()
+        .ok()?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    for line in stdout.lines() {
+        if let Some(path) = line.strip_prefix('n') {
+            if path.starts_with('/') {
+                return Some(path.to_string());
+            }
+        }
+    }
+    None
 }
 
 /// Build a pid → children mapping.
