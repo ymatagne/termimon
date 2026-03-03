@@ -134,10 +134,12 @@ impl DashApp {
             Ok(response) => {
                 match serde_json::from_str::<StatusResponse>(response.trim()) {
                     Ok(status) => {
-                        if !status.agents.is_empty() && self.selected >= status.agents.len() {
-                            self.selected = status.agents.len() - 1;
-                        }
                         self.status = Some(status);
+                        // Clamp selected to visible agents count
+                        let visible_count = self.visible_agents().len();
+                        if visible_count > 0 && self.selected >= visible_count {
+                            self.selected = visible_count - 1;
+                        }
                         self.error_msg = None;
                     }
                     Err(e) => {
@@ -153,9 +155,10 @@ impl DashApp {
         self.last_refresh = Instant::now();
     }
 
-    /// Get the selected agent snapshot if available.
+    /// Get the selected agent snapshot if available (uses visible/sorted order).
     fn selected_agent(&self) -> Option<&AgentSnapshot> {
-        self.status.as_ref()?.agents.get(self.selected)
+        let visible = self.visible_agents();
+        visible.get(self.selected).copied()
     }
 
     /// Determine the animation tick interval based on selected agent state.
@@ -189,8 +192,15 @@ impl DashApp {
                     Instant::now(),
                 ));
             } else if pane_id.starts_with("pid-") {
+                // Try to find the tmux pane containing this agent's PID
+                if let Some(pid) = agent.pid {
+                    if let Some(found_pane) = find_tmux_pane_for_pid(pid) {
+                        self.switch_target = Some(found_pane);
+                        return;
+                    }
+                }
                 self.flash_msg = Some((
-                    "Agent detected via process scan — no tmux pane to switch to".to_string(),
+                    format!("Agent PID {} not found in any tmux pane — try switching manually", agent.pid.unwrap_or(0)),
                     Instant::now(),
                 ));
             } else {
@@ -326,6 +336,20 @@ pub async fn run() -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Search all tmux panes for one whose process tree contains the given PID.
+fn find_tmux_pane_for_pid(target_pid: u32) -> Option<String> {
+    let panes = crate::tmux::pane::list_all_panes().ok()?;
+    let procs = crate::agents::detector::list_processes().ok()?;
+
+    for pane in &panes {
+        let descendants = crate::agents::detector::descendant_processes(pane.pane_pid, &procs);
+        if descendants.iter().any(|p| p.pid == target_pid) {
+            return Some(pane.pane_id.clone());
+        }
+    }
+    None
 }
 
 /// Execute tmux pane focus after dashboard exits cleanly.
@@ -508,7 +532,7 @@ fn draw_body(frame: &mut Frame, area: Rect, app: &DashApp) {
     draw_agent_detail(frame, body_chunks[1], app, status);
 }
 
-fn draw_agent_list(frame: &mut Frame, area: Rect, app: &DashApp, status: &StatusResponse) {
+fn draw_agent_list(frame: &mut Frame, area: Rect, app: &DashApp, _status: &StatusResponse) {
     let block = Block::default()
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::DarkGray))
@@ -522,10 +546,11 @@ fn draw_agent_list(frame: &mut Frame, area: Rect, app: &DashApp, status: &Status
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
+    let visible = app.visible_agents();
     let mut lines: Vec<Line> = Vec::new();
     lines.push(Line::from("")); // top padding
 
-    for (i, agent) in status.agents.iter().enumerate() {
+    for (i, agent) in visible.iter().enumerate() {
         let is_selected = i == app.selected;
         let indicator = if is_selected { "▸" } else { " " };
 
@@ -581,7 +606,7 @@ fn draw_agent_list(frame: &mut Frame, area: Rect, app: &DashApp, status: &Status
     frame.render_widget(list_widget, inner);
 }
 
-fn draw_agent_detail(frame: &mut Frame, area: Rect, app: &DashApp, status: &StatusResponse) {
+fn draw_agent_detail(frame: &mut Frame, area: Rect, app: &DashApp, _status: &StatusResponse) {
     let block = Block::default()
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::DarkGray))
@@ -595,8 +620,9 @@ fn draw_agent_detail(frame: &mut Frame, area: Rect, app: &DashApp, status: &Stat
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    let agent = match status.agents.get(app.selected) {
-        Some(a) => a,
+    let visible = app.visible_agents();
+    let agent = match visible.get(app.selected) {
+        Some(a) => *a,
         None => return,
     };
 
@@ -832,6 +858,12 @@ fn draw_activity_feed(frame: &mut Frame, area: Rect, app: &DashApp, agent: &Agen
                 if let Some(ref wd) = agent.working_dir {
                     let encoded = crate::agents::cost::encode_working_dir(wd);
                     if !evt.project.is_empty() && evt.project == encoded {
+                        return true;
+                    }
+                }
+                // Match by agent_id
+                if !agent.agent_id.is_empty() && !evt.agent_name.is_empty() {
+                    if evt.agent_name.to_lowercase().contains(&agent.kind.to_lowercase()) {
                         return true;
                     }
                 }

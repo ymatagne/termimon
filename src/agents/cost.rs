@@ -307,11 +307,19 @@ impl AgentCostTracker {
     }
 
     /// Scan all Claude transcripts and rebuild cost data.
-    pub fn scan_all_transcripts(&mut self, _workdir_to_agent_id: &std::collections::HashMap<String, String>) {
+    pub fn scan_all_transcripts(&mut self, workdir_to_agent_id: &std::collections::HashMap<String, String>) {
         let files = find_transcript_files();
 
         // Reset aggregate before rebuilding
         self.agents.remove("claude-all");
+        // Also clear per-project and per-agent keys to rebuild fresh
+        let keys_to_remove: Vec<String> = self.agents.keys()
+            .filter(|k| k.starts_with("project:") || workdir_to_agent_id.values().any(|v| v == *k))
+            .cloned()
+            .collect();
+        for k in keys_to_remove {
+            self.agents.remove(&k);
+        }
 
         let mut total_events: Vec<TokenUsageEvent> = Vec::new();
 
@@ -321,10 +329,15 @@ impl AgentCostTracker {
                 continue;
             }
 
-            // Also map per-project for project-level breakdown
+            // Map per-project for project-level breakdown
             if let Some(project_dir) = session_project_dir_name(&file) {
                 let project_key = format!("project:{}", project_dir);
                 self.ingest(&project_key, &events);
+
+                // Also ingest per-agent if we can map this project to an agent
+                if let Some(agent_id) = workdir_to_agent_id.get(&project_dir) {
+                    self.ingest(agent_id, &events);
+                }
             }
 
             total_events.extend(events);
