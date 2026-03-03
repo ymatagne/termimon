@@ -89,6 +89,11 @@ pub fn find_process_in_tree(
     None
 }
 
+/// Check if a process is still alive.
+pub fn is_process_alive(pid: u32) -> bool {
+    unsafe { libc::kill(pid as i32, 0) == 0 }
+}
+
 /// Check if the last non-empty line matches any of the prompt patterns.
 pub fn is_at_prompt(content: &str, prompt_patterns: &[&str]) -> bool {
     let last_line = content.lines().rev().find(|l| !l.trim().is_empty());

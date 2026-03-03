@@ -68,14 +68,14 @@ fn tick(
     config: &config::Config,
     tracked: &mut HashMap<String, TrackedAgent>,
 ) -> anyhow::Result<()> {
-    let panes = pane::list_all_panes()?;
     let procs = detector::list_processes()?;
     let mut seen: Vec<String> = Vec::new();
 
+    // Strategy 1: Try tmux pane-based detection
+    let panes = pane::list_all_panes().unwrap_or_default();
     for info in &panes {
         seen.push(info.pane_id.clone());
 
-        // Walk process tree from pane PID
         let agent_proc = detector::find_process_in_tree(
             info.pane_pid,
             AGENT_PROCESS_NAMES,
@@ -86,21 +86,15 @@ fn tick(
             .as_ref()
             .and_then(|p| registry.identify_process(&p.comm));
 
-        // Skip panes with no agent (unless already tracked)
         if detected_kind.is_none() && !tracked.contains_key(&info.pane_id) {
             continue;
         }
 
-        // Capture pane content
         let content = match pane::capture_pane(&info.pane_id) {
             Ok(c) => c,
-            Err(e) => {
-                tracing::debug!("Capture failed for {}: {e}", info.pane_id);
-                continue;
-            }
+            Err(_) => String::new(),
         };
 
-        // Determine kind
         let kind = detected_kind.unwrap_or_else(|| {
             registry
                 .detect_from_content(&content)
@@ -113,7 +107,6 @@ fn tick(
             continue;
         }
 
-        // Get or create tracking entry
         let agent = tracked
             .entry(info.pane_id.clone())
             .or_insert_with(|| {
@@ -126,10 +119,7 @@ fn tick(
         agent.kind = kind;
         agent.pid = agent_proc.as_ref().map(|p| p.pid);
 
-        // Detect state from content
         let mut new_state = registry.detect_state(kind, &content);
-
-        // Claude fallback: check JSONL transcripts
         if new_state == AgentState::Unknown && kind == AgentKind::Claude {
             if let Ok(events) = crate::agents::claude::read_latest_transcript(5) {
                 if let Some(s) = crate::agents::claude::state_from_transcript(&events) {
@@ -137,16 +127,74 @@ fn tick(
                 }
             }
         }
-
         if new_state != AgentState::Unknown {
             agent.transition(new_state);
         }
-
         agent.check_sleep_timeout(SLEEP_TIMEOUT_SECS);
     }
 
-    // Prune stale entries
-    tracked.retain(|id, _| seen.contains(id));
+    // Strategy 2: Global process scan (works with cmux, screen, or no multiplexer)
+    // Find agent processes running anywhere on the system
+    for proc in &procs {
+        let comm_lower = proc.comm.to_lowercase();
+        let kind = if comm_lower.contains("claude") && !comm_lower.contains("helper") && !comm_lower.contains("crashpad") && !comm_lower.contains("shipit") {
+            // Only match the CLI binary, not the Electron app helpers
+            if proc.comm.contains(".local/bin/claude") || proc.comm == "claude" {
+                Some(AgentKind::Claude)
+            } else {
+                None
+            }
+        } else if comm_lower.contains("codex") {
+            Some(AgentKind::Codex)
+        } else if comm_lower == "aider" || proc.comm.contains("/aider") {
+            Some(AgentKind::Aider)
+        } else {
+            None
+        };
+
+        if let Some(kind) = kind {
+            let key = format!("proc-{}", proc.pid);
+            if !seen.contains(&key) {
+                seen.push(key.clone());
+                let agent = tracked
+                    .entry(key)
+                    .or_insert_with(|| {
+                        tracing::info!("New agent (process scan): {} pid={}", kind, proc.pid);
+                        let mut a = TrackedAgent::new(kind, format!("pid-{}", proc.pid));
+                        a.pid = Some(proc.pid);
+                        a
+                    });
+                agent.kind = kind;
+                agent.pid = Some(proc.pid);
+
+                // Try Claude JSONL transcript for state
+                if kind == AgentKind::Claude {
+                    let mut state = AgentState::Idle;
+                    if let Ok(events) = crate::agents::claude::read_latest_transcript(5) {
+                        if let Some(s) = crate::agents::claude::state_from_transcript(&events) {
+                            state = s;
+                        }
+                    }
+                    agent.transition(state);
+                } else {
+                    // Default to idle for detected agents
+                    if agent.state == AgentState::Unknown {
+                        agent.transition(AgentState::Idle);
+                    }
+                }
+                agent.check_sleep_timeout(SLEEP_TIMEOUT_SECS);
+            }
+        }
+    }
+
+    // Prune: keep pane-based entries if pane still exists, process-based if process alive
+    tracked.retain(|id, agent| {
+        if id.starts_with("proc-") {
+            agent.pid.map(|p| detector::is_process_alive(p)).unwrap_or(false)
+        } else {
+            seen.contains(id)
+        }
+    });
 
     // Update status bar
     update_status(tracked, config)?;
