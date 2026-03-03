@@ -339,6 +339,8 @@ pub async fn run() -> Result<()> {
 }
 
 /// Search all tmux panes for one whose process tree contains the given PID.
+/// Find the tmux target (session:window.pane) for a given PID.
+/// Walks the process tree since pane_pid is the shell, not the agent process.
 fn find_tmux_pane_for_pid(target_pid: u32) -> Option<String> {
     let panes = crate::tmux::pane::list_all_panes().ok()?;
     let procs = crate::agents::detector::list_processes().ok()?;
@@ -346,31 +348,40 @@ fn find_tmux_pane_for_pid(target_pid: u32) -> Option<String> {
     for pane in &panes {
         let descendants = crate::agents::detector::descendant_processes(pane.pane_pid, &procs);
         if descendants.iter().any(|p| p.pid == target_pid) {
-            return Some(pane.pane_id.clone());
+            // Return session:window.pane format for proper switching
+            let target = format!("{}:{}.{}", pane.session, pane.window_index, pane.pane_index);
+            return Some(target);
         }
     }
     None
 }
 
-/// Execute tmux pane focus after dashboard exits cleanly.
-fn execute_tmux_switch(pane_id: &str) {
-    // Only attempt tmux switch for real tmux pane IDs (start with %)
-    if !pane_id.starts_with('%') {
-        return;
+/// Execute tmux switch: switch-client to session, select-window, select-pane.
+/// Accepts either a "session:window.pane" target or a bare pane_id like "%3".
+fn execute_tmux_switch(target: &str) {
+    let tmux = crate::tmux::find_tmux();
+
+    if target.contains(':') {
+        // Full target format: "session:window.pane"
+        // switch-client moves to the right session+window+pane in one go
+        let _ = std::process::Command::new(tmux)
+            .args(["switch-client", "-t", target])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status();
+    } else if target.starts_with('%') {
+        // Bare pane ID — try select-pane then select-window
+        let _ = std::process::Command::new(tmux)
+            .args(["select-pane", "-t", target])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status();
+        let _ = std::process::Command::new(tmux)
+            .args(["select-window", "-t", target])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status();
     }
-    // First select the window containing the pane, then focus the pane
-    // Suppress stderr so tmux errors don't pollute the terminal after exit
-    let _ = std::process::Command::new(crate::tmux::find_tmux())
-        .args(["select-pane", "-t", pane_id])
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status();
-    // Also try to select the window (pane_id like %3 belongs to some window)
-    let _ = std::process::Command::new(crate::tmux::find_tmux())
-        .args(["select-window", "-t", pane_id])
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status();
 }
 
 fn draw_dashboard(frame: &mut Frame, app: &DashApp) {

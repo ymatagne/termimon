@@ -260,7 +260,7 @@ fn tick(
                     detector::descendant_processes(p.pane_pid, &procs)
                         .iter()
                         .any(|d| d.pid == proc.pid)
-                }).map(|p| p.pane_id.clone());
+                }).map(|p| format!("{}:{}.{}", p.session, p.window_index, p.pane_index));
 
                 let pane_id_str = real_pane_id.unwrap_or_else(|| format!("pid-{}", proc.pid));
                 let agent = tracked
