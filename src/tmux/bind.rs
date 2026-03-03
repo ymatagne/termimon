@@ -19,7 +19,7 @@ pub fn bind_hotkey() -> Result<()> {
     let bin = termimon_bin();
 
     // Try live tmux binding first
-    let tmux_available = std::process::Command::new("tmux")
+    let tmux_available = std::process::Command::new(super::find_tmux())
         .args(["info"])
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
@@ -32,7 +32,7 @@ pub fn bind_hotkey() -> Result<()> {
             "display-popup -E -w 80% -h 80% '{} dash'",
             bin
         );
-        let status = std::process::Command::new("tmux")
+        let status = std::process::Command::new(super::find_tmux())
             .args(["bind-key", BIND_KEY, &popup_cmd])
             .status()
             .context("Failed to run tmux bind-key")?;
@@ -73,7 +73,7 @@ pub fn bind_hotkey() -> Result<()> {
 /// Remove tmux key binding.
 pub fn unbind_hotkey() -> Result<()> {
     // Unbind live
-    let _ = std::process::Command::new("tmux")
+    let _ = std::process::Command::new(super::find_tmux())
         .args(["unbind-key", BIND_KEY])
         .status();
 

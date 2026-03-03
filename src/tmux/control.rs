@@ -17,7 +17,7 @@ pub struct ControlConnection {
 impl ControlConnection {
     /// Attach to an existing tmux session in control mode.
     pub fn attach(session: &str) -> Result<Self> {
-        let mut child = Command::new("tmux")
+        let mut child = Command::new(super::find_tmux())
             .args(["-C", "attach-session", "-t", session])
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())

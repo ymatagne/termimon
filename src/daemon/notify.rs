@@ -60,7 +60,7 @@ pub fn send_notification(event: &NotifyEvent, config: &Config) {
     }
 
     // tmux display-message (best effort)
-    let _ = std::process::Command::new("tmux")
+    let _ = std::process::Command::new(crate::tmux::find_tmux())
         .args(["display-message", &format!("TermiMon: {}", msg)])
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())

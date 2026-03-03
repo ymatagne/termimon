@@ -22,7 +22,7 @@ pub fn is_tmux() -> bool {
 
 /// Return the current tmux session name, or None if not in tmux.
 pub fn current_session() -> Option<String> {
-    let output = std::process::Command::new("tmux")
+    let output = std::process::Command::new(find_tmux())
         .args(["display-message", "-p", "#{session_name}"])
         .output()
         .ok()?;
@@ -39,7 +39,7 @@ pub fn current_session() -> Option<String> {
 }
 
 /// Find the tmux binary path.
-fn find_tmux() -> &'static str {
+pub fn find_tmux() -> &'static str {
     static TMUX_PATH: std::sync::OnceLock<String> = std::sync::OnceLock::new();
     TMUX_PATH.get_or_init(|| {
         // Check common paths

@@ -360,13 +360,13 @@ fn execute_tmux_switch(pane_id: &str) {
     }
     // First select the window containing the pane, then focus the pane
     // Suppress stderr so tmux errors don't pollute the terminal after exit
-    let _ = std::process::Command::new("tmux")
+    let _ = std::process::Command::new(crate::tmux::find_tmux())
         .args(["select-pane", "-t", pane_id])
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .status();
     // Also try to select the window (pane_id like %3 belongs to some window)
-    let _ = std::process::Command::new("tmux")
+    let _ = std::process::Command::new(crate::tmux::find_tmux())
         .args(["select-window", "-t", pane_id])
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
