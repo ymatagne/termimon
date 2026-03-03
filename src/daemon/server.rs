@@ -1,0 +1,149 @@
+//! Unix socket IPC server for CLI ↔ daemon communication
+//!
+//! Protocol: simple line-based text.
+//!   Request:  "<command>\n"
+//!   Response: "<text>\n"
+
+use anyhow::{Context, Result};
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::net::UnixListener;
+use tokio::sync::watch;
+
+use std::sync::{Arc, Mutex};
+use crate::agents::TrackedAgent;
+
+/// Serializable snapshot of a tracked agent for IPC.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct AgentSnapshot {
+    pub kind: String,
+    pub state: String,
+    pub pane_id: String,
+    pub pid: Option<u32>,
+}
+
+impl From<&TrackedAgent> for AgentSnapshot {
+    fn from(a: &TrackedAgent) -> Self {
+        Self {
+            kind: a.kind.to_string(),
+            state: a.state.to_string(),
+            pane_id: a.pane_id.clone(),
+            pid: a.pid,
+        }
+    }
+}
+
+/// Shared daemon state exposed to IPC clients.
+#[derive(Debug, Clone, Default)]
+pub struct DaemonState {
+    pub agents: Vec<AgentSnapshot>,
+    pub started_at: Option<String>,
+    pub heartbeat_count: u64,
+}
+
+pub type SharedState = Arc<Mutex<DaemonState>>;
+
+pub fn new_shared_state() -> SharedState {
+    Arc::new(Mutex::new(DaemonState {
+        agents: Vec::new(),
+        started_at: Some(chrono::Utc::now().to_rfc3339()),
+        heartbeat_count: 0,
+    }))
+}
+
+/// Global state handle so the heartbeat loop can update it.
+static GLOBAL_STATE: std::sync::Mutex<Option<SharedState>> = std::sync::Mutex::new(None);
+
+/// Get the global shared state (used by heartbeat).
+pub fn get_global_state() -> Option<SharedState> {
+    GLOBAL_STATE.lock().ok()?.clone()
+}
+
+/// Run the IPC server until shutdown.
+pub async fn run_server(mut shutdown: watch::Receiver<bool>) -> Result<()> {
+    let socket_path = super::socket_path();
+    let listener = UnixListener::bind(&socket_path).context("Failed to bind Unix socket")?;
+    tracing::info!("IPC server listening on {}", socket_path.display());
+
+    let state = new_shared_state();
+    if let Ok(mut g) = GLOBAL_STATE.lock() {
+        *g = Some(state.clone());
+    }
+
+    loop {
+        tokio::select! {
+            accept = listener.accept() => {
+                match accept {
+                    Ok((stream, _)) => {
+                        let st = state.clone();
+                        tokio::spawn(async move {
+                            if let Err(e) = handle_client(stream, st).await {
+                                tracing::debug!("Client error: {e}");
+                            }
+                        });
+                    }
+                    Err(e) => tracing::warn!("Accept error: {e}"),
+                }
+            }
+            _ = shutdown.changed() => {
+                if *shutdown.borrow() {
+                    tracing::info!("IPC server shutting down");
+                    break;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+async fn handle_client(stream: tokio::net::UnixStream, state: SharedState) -> Result<()> {
+    let (reader, mut writer) = stream.into_split();
+    let mut reader = BufReader::new(reader);
+    let mut line = String::new();
+    reader.read_line(&mut line).await?;
+    let command = line.trim();
+
+    let response = match command {
+        "status" => {
+            let st = state.lock().map_err(|e| anyhow::anyhow!("lock: {e}"))?;
+            format!(
+                "  Uptime since: {}\n  Heartbeats: {}\n  Tracked agents: {}",
+                st.started_at.as_deref().unwrap_or("unknown"),
+                st.heartbeat_count,
+                st.agents.len()
+            )
+        }
+        "agents" => {
+            let st = state.lock().map_err(|e| anyhow::anyhow!("lock: {e}"))?;
+            serde_json::to_string_pretty(&st.agents)?
+        }
+        "ping" => "pong".to_string(),
+        _ => format!("unknown command: {command}"),
+    };
+
+    writer.write_all(response.as_bytes()).await?;
+    writer.write_all(b"\n").await?;
+    writer.shutdown().await?;
+    Ok(())
+}
+
+/// Client-side: connect to daemon and send a request, return response.
+pub async fn client_request(command: &str) -> Result<String> {
+    let stream = tokio::net::UnixStream::connect(super::socket_path())
+        .await
+        .context("Could not connect to daemon socket")?;
+
+    let (reader, mut writer) = stream.into_split();
+    writer.write_all(command.as_bytes()).await?;
+    writer.write_all(b"\n").await?;
+
+    let mut reader = BufReader::new(reader);
+    let mut response = String::new();
+    loop {
+        let mut buf = String::new();
+        if reader.read_line(&mut buf).await? == 0 {
+            break;
+        }
+        response.push_str(&buf);
+    }
+    Ok(response)
+}
