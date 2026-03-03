@@ -301,13 +301,9 @@ fn draw_creatures(frame: &mut Frame, area: Rect, app: &DashApp) {
             ])
             .split(inner);
 
-        // ── Sprite rendering ──────────────────────────────────────────
+        // ── Sprite rendering (native ratatui spans, no ANSI escapes) ──
         let sprite = sprites::sprite_for_agent(&agent.kind);
-        let sprite_lines = halfblock::render_sprite(sprite);
-        let sprite_text: Vec<Line> = sprite_lines
-            .iter()
-            .map(|l| Line::from(Span::raw(format!("  {l}"))))
-            .collect();
+        let sprite_text = render_sprite_ratatui(sprite);
         let sprite_widget = Paragraph::new(sprite_text);
         frame.render_widget(sprite_widget, inner_chunks[0]);
 
@@ -350,6 +346,61 @@ fn draw_creatures(frame: &mut Frame, area: Rect, app: &DashApp) {
         let info_widget = Paragraph::new(info_lines);
         frame.render_widget(info_widget, inner_chunks[1]);
     }
+}
+
+/// Render a 16×16 sprite as ratatui Lines using native Span styling (no ANSI escapes).
+fn render_sprite_ratatui<'a>(sprite: &crate::creatures::SpriteFrame) -> Vec<Line<'a>> {
+    let mut lines = Vec::with_capacity(8);
+
+    for y in (0..16).step_by(2) {
+        let top_row = &sprite[y];
+        let bot_row = &sprite[y + 1];
+        let mut spans = Vec::with_capacity(18);
+        spans.push(Span::raw("  ")); // left padding
+
+        for x in 0..16 {
+            let t = &top_row[x];
+            let b = &bot_row[x];
+            let t_trans = t.is_transparent();
+            let b_trans = b.is_transparent();
+
+            match (t_trans, b_trans) {
+                (true, true) => {
+                    spans.push(Span::raw(" "));
+                }
+                (false, true) => {
+                    spans.push(Span::styled(
+                        "▀",
+                        Style::default().fg(Color::Rgb(t.r, t.g, t.b)),
+                    ));
+                }
+                (true, false) => {
+                    spans.push(Span::styled(
+                        "▄",
+                        Style::default().fg(Color::Rgb(b.r, b.g, b.b)),
+                    ));
+                }
+                (false, false) => {
+                    if t.r == b.r && t.g == b.g && t.b == b.b {
+                        spans.push(Span::styled(
+                            " ",
+                            Style::default().bg(Color::Rgb(t.r, t.g, t.b)),
+                        ));
+                    } else {
+                        spans.push(Span::styled(
+                            "▀",
+                            Style::default()
+                                .fg(Color::Rgb(t.r, t.g, t.b))
+                                .bg(Color::Rgb(b.r, b.g, b.b)),
+                        ));
+                    }
+                }
+            }
+        }
+        lines.push(Line::from(spans));
+    }
+
+    lines
 }
 
 fn state_color(state: &str) -> Color {
