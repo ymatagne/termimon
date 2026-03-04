@@ -488,13 +488,13 @@ fn award_xp_from_activity(
 
     for event in &events {
         let xp = match event.event_type {
-            EventType::FileWrite => 5,
+            EventType::FileWrite => 2,
             EventType::FileRead => 1,
             EventType::Command => 3,
-            EventType::Error => 0,
-            EventType::TokenUsage => 2,
+            EventType::Error => 5,       // resilience XP for error/crash recovery
+            EventType::TokenUsage => 1,  // thinking/reasoning
             EventType::Thinking => 1,
-            EventType::Responding => 1,
+            EventType::Responding => 1,  // active typing
             EventType::StateChange => 0,
         };
 

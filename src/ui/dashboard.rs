@@ -668,7 +668,7 @@ fn draw_agent_list(frame: &mut Frame, area: Rect, app: &DashApp, _status: &Statu
             ),
             Span::raw(&agent.element_icon),
             Span::styled(
-                format!(" {} ", agent.creature_name),
+                format!(" {}{} Lv.{} ", agent.creature_name, if agent.badge.is_empty() { String::new() } else { format!(" {}", agent.badge) }, agent.level),
                 Style::default()
                     .fg(if is_selected { theme.fg } else { Color::Gray })
                     .add_modifier(if is_selected {
@@ -790,7 +790,12 @@ fn draw_stats_panel(frame: &mut Frame, area: Rect, app: &DashApp, agent: &AgentS
     };
 
     let state_color = get_state_color(&agent.state);
-    let xp_bar = halfblock::render_xp_bar(agent.xp as f64 / 100.0, 12);
+    let level_progress = if agent.xp_for_next_level > 0 {
+        agent.xp_into_level as f64 / agent.xp_for_next_level as f64
+    } else {
+        1.0
+    };
+    let xp_bar = halfblock::render_xp_bar(level_progress, 12);
     let desc = creature_def.map(|d| d.description).unwrap_or("");
     let working_dir = agent
         .working_dir
@@ -806,17 +811,18 @@ fn draw_stats_panel(frame: &mut Frame, area: Rect, app: &DashApp, agent: &AgentS
 
     let mut lines: Vec<Line> = Vec::new();
 
-    // Name + stage
+    // Name + badge + level + stage
+    let badge_str = if agent.badge.is_empty() { String::new() } else { format!(" {}", agent.badge) };
     lines.push(Line::from(vec![
         Span::raw(&agent.element_icon),
         Span::styled(
-            format!(" {} ", agent.creature_name),
+            format!(" {}{} ", agent.creature_name, badge_str),
             Style::default()
                 .fg(theme.fg)
                 .add_modifier(Modifier::BOLD),
         ),
         Span::styled(
-            format!("(Stage {})", agent.stage),
+            format!("Lv.{} (Stage {})", agent.level, agent.stage),
             Style::default().fg(theme.muted),
         ),
     ]));
@@ -852,14 +858,18 @@ fn draw_stats_panel(frame: &mut Frame, area: Rect, app: &DashApp, agent: &AgentS
         ),
     ]));
 
-    // XP bar
+    // XP bar — shows progress toward next level
     lines.push(Line::from(vec![
         Span::styled("XP: ", Style::default().fg(theme.muted)),
         Span::styled(
-            format!("{}/100 ", agent.xp),
+            format!("{} ", agent.xp),
             Style::default().fg(theme.highlight),
         ),
         Span::raw(xp_bar),
+        Span::styled(
+            format!(" Lv.{}", agent.level),
+            Style::default().fg(theme.fg).add_modifier(Modifier::BOLD),
+        ),
     ]));
 
     // Tokens and cost (from cost tracker)
@@ -1304,7 +1314,8 @@ pub fn format_status_bar_animated(agents: &[AgentSnapshot], tick: u64) -> String
         .iter()
         .map(|a| {
             let icon = status_bar_icon(a, tick);
-            format!("{icon}{}", a.creature_name)
+            let badge = if a.badge.is_empty() { String::new() } else { format!("{}", a.badge) };
+            format!("{icon}{}{} Lv.{}", a.creature_name, badge, a.level)
         })
         .collect::<Vec<_>>()
         .join(" │ ")

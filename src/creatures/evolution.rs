@@ -13,6 +13,57 @@
 use super::{Creature, Stage};
 use serde::{Deserialize, Serialize};
 
+// ── Leveling system ──────────────────────────────────────────────────────────
+
+/// Compute level, XP into current level, and XP needed for the next level from total XP.
+///
+/// - **Stage 1** (Levels 1–10): 10 XP per level → evolves at Level 10 (100 XP)
+/// - **Stage 2** (Levels 11–25): ~27 XP per level (400 XP / 15 levels) → evolves at Level 25 (500 XP)
+/// - **Stage 3** (Levels 26+): 50 XP per level, uncapped
+pub fn level_from_xp(xp: u64) -> (u8, u64, u64) {
+    if xp < 100 {
+        // Stage 1: levels 1-10, 10 XP each
+        let level = (xp / 10) as u8 + 1; // 0 XP → Lv.1, 10 XP → Lv.2, ...
+        let xp_into = xp % 10;
+        (level.min(10), xp_into, 10)
+    } else if xp < 500 {
+        // Stage 2: levels 11-25, ~27 XP each (400 XP / 15 levels ≈ 26.67)
+        let xp_in_stage = xp - 100;
+        let level_in_stage = (xp_in_stage * 15 / 400) as u8; // 0..14
+        let level = 11 + level_in_stage;
+        // XP boundaries: level N starts at 100 + (N-11) * 400/15
+        let xp_for_this_level = 100 + (level_in_stage as u64) * 400 / 15;
+        let xp_for_next_level = 100 + (level_in_stage as u64 + 1) * 400 / 15;
+        let xp_into = xp - xp_for_this_level;
+        let xp_needed = xp_for_next_level - xp_for_this_level;
+        (level.min(25), xp_into, xp_needed)
+    } else {
+        // Stage 3: levels 26+, 50 XP each, uncapped
+        let xp_in_stage = xp - 500;
+        let level_in_stage = (xp_in_stage / 50) as u8;
+        let level = 26u8.saturating_add(level_in_stage);
+        let xp_into = xp_in_stage % 50;
+        (level, xp_into, 50)
+    }
+}
+
+/// Return the prestige badge for lifetime XP milestones, if any.
+pub fn prestige_badge(xp: u64) -> &'static str {
+    if xp >= 100_000 {
+        "🌟"
+    } else if xp >= 50_000 {
+        "🏆"
+    } else if xp >= 10_000 {
+        "👑"
+    } else if xp >= 5_000 {
+        "💎"
+    } else if xp >= 1_000 {
+        "⭐"
+    } else {
+        ""
+    }
+}
+
 // ── XP rewards ───────────────────────────────────────────────────────────────
 
 /// XP awarded for various agent activities.
@@ -206,6 +257,53 @@ mod tests {
 
         c.xp = 90;
         assert!(EvolutionEngine::is_close_to_evolution(&c));
+    }
+
+    #[test]
+    fn level_from_xp_stage1() {
+        let (level, into, needed) = super::level_from_xp(0);
+        assert_eq!(level, 1);
+        assert_eq!(into, 0);
+        assert_eq!(needed, 10);
+
+        let (level, into, needed) = super::level_from_xp(55);
+        assert_eq!(level, 6);
+        assert_eq!(into, 5);
+        assert_eq!(needed, 10);
+
+        let (level, _, _) = super::level_from_xp(99);
+        assert_eq!(level, 10);
+    }
+
+    #[test]
+    fn level_from_xp_stage2() {
+        let (level, _, _) = super::level_from_xp(100);
+        assert_eq!(level, 11);
+
+        let (level, _, _) = super::level_from_xp(499);
+        assert!(level >= 24 && level <= 25);
+    }
+
+    #[test]
+    fn level_from_xp_stage3() {
+        let (level, into, needed) = super::level_from_xp(500);
+        assert_eq!(level, 26);
+        assert_eq!(into, 0);
+        assert_eq!(needed, 50);
+
+        let (level, _, _) = super::level_from_xp(3967);
+        // (3967 - 500) / 50 = 69.34 → level 26 + 69 = 95
+        assert_eq!(level, 95);
+    }
+
+    #[test]
+    fn prestige_badges() {
+        assert_eq!(super::prestige_badge(500), "");
+        assert_eq!(super::prestige_badge(1000), "⭐");
+        assert_eq!(super::prestige_badge(5000), "💎");
+        assert_eq!(super::prestige_badge(10000), "👑");
+        assert_eq!(super::prestige_badge(50000), "🏆");
+        assert_eq!(super::prestige_badge(100000), "🌟");
     }
 
     #[test]

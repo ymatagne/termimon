@@ -31,6 +31,14 @@ pub struct AgentSnapshot {
     pub stage: u8,
     pub xp: u64,
     #[serde(default)]
+    pub level: u8,
+    #[serde(default)]
+    pub xp_into_level: u64,
+    #[serde(default)]
+    pub xp_for_next_level: u64,
+    #[serde(default)]
+    pub badge: String,
+    #[serde(default)]
     pub productivity: Option<ProductivitySnapshot>,
 }
 
@@ -69,6 +77,8 @@ impl From<&TrackedAgent> for AgentSnapshot {
             Some(def) => (def.evolution_names[stage_idx].to_string(), def.element.icon().to_string()),
             None => ("Unknown".to_string(), "❓".to_string()),
         };
+        let (level, xp_into_level, xp_for_next_level) = crate::creatures::evolution::level_from_xp(xp);
+        let badge = crate::creatures::evolution::prestige_badge(xp).to_string();
         Self {
             kind: a.kind.to_string(),
             state: a.state.to_string(),
@@ -83,6 +93,10 @@ impl From<&TrackedAgent> for AgentSnapshot {
             element_icon,
             stage,
             xp,
+            level,
+            xp_into_level,
+            xp_for_next_level,
+            badge,
             productivity: None,
         }
     }
