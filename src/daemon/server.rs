@@ -14,6 +14,7 @@ use crate::agents::TrackedAgent;
 use crate::agents::activity::ActivityEvent;
 use crate::agents::cost::AgentCostSummary;
 use crate::team::{self, SharedTeamState};
+use crate::team::battle::{BattleStats, resolve_battle};
 
 /// Serializable snapshot of a tracked agent for IPC.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -164,6 +165,8 @@ pub struct TeamStatusResponse {
     pub local_name: String,
     pub peers: Vec<String>,
     pub battle_count: usize,
+    #[serde(default)]
+    pub peer_creatures: std::collections::HashMap<String, Vec<crate::team::protocol::CreatureSync>>,
 }
 
 /// Shared handle for the team shutdown sender so IPC handlers can signal team tasks.
@@ -261,12 +264,17 @@ async fn handle_client(
         "ping" => "pong".to_string(),
         "team_status" => {
             let ts = team_state.lock().map_err(|e| anyhow::anyhow!("lock: {e}"))?;
+            let mut peer_creatures = std::collections::HashMap::new();
+            for (name, peer) in &ts.registry.peers {
+                peer_creatures.insert(name.clone(), peer.creatures.clone());
+            }
             let resp = TeamStatusResponse {
                 hosting: ts.hosting,
                 connected: ts.connected,
                 local_name: ts.local_name.clone(),
                 peers: ts.registry.peer_names(),
                 battle_count: ts.battle_log.len(),
+                peer_creatures,
             };
             serde_json::to_string(&resp)?
         }
@@ -339,6 +347,9 @@ async fn handle_client(
             });
             "OK: Auto-discovery started".to_string()
         }
+        cmd if cmd.starts_with("battle ") => {
+            handle_battle_command(cmd, &state, &team_state)?
+        }
         _ => format!("unknown command: {command}"),
     };
 
@@ -346,6 +357,70 @@ async fn handle_client(
     writer.write_all(b"\n").await?;
     writer.shutdown().await?;
     Ok(())
+}
+
+fn handle_battle_command(
+    cmd: &str,
+    state: &SharedState,
+    team_state: &SharedTeamState,
+) -> Result<String> {
+    // Parse: "battle <local_creature> <peer> <peer_creature>"
+    let parts: Vec<&str> = cmd.splitn(4, ' ').collect();
+    if parts.len() < 4 {
+        return Ok("ERROR: Usage: battle <local_creature> <peer> <peer_creature>".to_string());
+    }
+    let local_creature_name = parts[1];
+    let peer_name = parts[2];
+    let peer_creature_name = parts[3];
+
+    // Look up local creature
+    let local_stats = {
+        let st = state.lock().map_err(|e| anyhow::anyhow!("lock: {e}"))?;
+        let local_name = team_state.lock().map_err(|e| anyhow::anyhow!("lock: {e}"))?.local_name.clone();
+        st.agents.iter()
+            .find(|a| a.creature_name == local_creature_name)
+            .map(|a| BattleStats::from_xp(&a.creature_name, &a.creature_species, a.xp, &local_name))
+    };
+    let local_stats = match local_stats {
+        Some(s) => s,
+        None => return Ok(format!("ERROR: Local creature '{}' not found", local_creature_name)),
+    };
+
+    // Look up peer creature
+    let peer_stats = {
+        let ts = team_state.lock().map_err(|e| anyhow::anyhow!("lock: {e}"))?;
+        ts.registry.peers.get(peer_name)
+            .and_then(|peer| {
+                peer.creatures.iter()
+                    .find(|c| c.name == peer_creature_name)
+                    .map(|c| BattleStats::from_xp(&c.name, &c.species, c.xp, &peer.name))
+            })
+    };
+    let peer_stats = match peer_stats {
+        Some(s) => s,
+        None => return Ok(format!("ERROR: Peer creature '{}' from '{}' not found", peer_creature_name, peer_name)),
+    };
+
+    // Resolve battle
+    let result = resolve_battle(local_stats, peer_stats);
+
+    // Store in battle log
+    if let Ok(mut ts) = team_state.lock() {
+        ts.battle_log.push(result.clone());
+
+        // Broadcast to peers if hosting
+        if let Some(ref tx) = ts.broadcast_tx {
+            let msg = crate::team::protocol::Message::BattleResult {
+                winner: result.winner.clone(),
+                loser: result.loser.clone(),
+                rounds: result.rounds.clone(),
+            };
+            let _ = tx.send(msg.to_line());
+        }
+    }
+
+    // Return JSON result
+    Ok(serde_json::to_string(&result)?)
 }
 
 async fn write_response(

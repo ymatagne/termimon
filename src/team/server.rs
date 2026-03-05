@@ -23,12 +23,13 @@ pub async fn run_team_server(
     let listener = TcpListener::bind(format!("0.0.0.0:{port}")).await?;
     tracing::info!("Team server listening on port {port}");
 
+    let (broadcast_tx, _) = broadcast::channel::<String>(100);
+
     if let Ok(mut ts) = team_state.lock() {
         ts.hosting = true;
         ts.connected = true;
+        ts.broadcast_tx = Some(broadcast_tx.clone());
     }
-
-    let (broadcast_tx, _) = broadcast::channel::<String>(100);
     let clients: Arc<Mutex<HashMap<String, ClientWriter>>> = Arc::new(Mutex::new(HashMap::new()));
 
     // Spawn host sync loop — broadcast host's creatures to all clients every 2s
@@ -92,6 +93,7 @@ pub async fn run_team_server(
     if let Ok(mut ts) = team_state.lock() {
         ts.hosting = false;
         ts.connected = false;
+        ts.broadcast_tx = None;
     }
 
     Ok(())

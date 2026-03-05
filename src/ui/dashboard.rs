@@ -203,6 +203,10 @@ impl DashApp {
                     for added in new_peers.difference(&current_peers) {
                         state.registry.add_peer(added.clone());
                     }
+                    // Sync peer creatures
+                    for (peer_name, creatures) in &ts.peer_creatures {
+                        state.registry.update_peer_creatures(peer_name, creatures.clone());
+                    }
                 }
             }
         }
@@ -364,17 +368,75 @@ pub async fn run() -> Result<()> {
                                 ));
                             }
                             KeyCode::Char('b') => {
-                                // Challenge selected peer's creature to battle
-                                if app.show_team {
-                                    app.flash_msg = Some((
-                                        "⚔️ Battle challenge sent! (requires connected peers)".to_string(),
-                                        Instant::now(),
-                                    ));
-                                } else {
+                                if !app.show_team {
                                     app.flash_msg = Some((
                                         "Press 't' first to open team view, then 'b' to battle".to_string(),
                                         Instant::now(),
                                     ));
+                                } else {
+                                    // Pick local creature with highest XP
+                                    let local_creature = app.status.as_ref()
+                                        .and_then(|s| s.agents.iter().max_by_key(|a| a.xp))
+                                        .map(|a| a.creature_name.clone());
+
+                                    // Pick selected peer and creature
+                                    let peer_info = {
+                                        let ts = app.team_state.lock().ok();
+                                        ts.and_then(|ts| {
+                                            let peer_names = ts.registry.peer_names();
+                                            let peer_name = peer_names.get(app.team_selected_peer)?.clone();
+                                            let peer = ts.registry.peers.get(&peer_name)?;
+                                            let creature = peer.creatures.get(app.team_selected_creature)?;
+                                            Some((peer_name, creature.name.clone()))
+                                        })
+                                    };
+
+                                    match (local_creature, peer_info) {
+                                        (Some(local), Some((peer, peer_creature))) => {
+                                            let cmd = format!("battle {} {} {}", local, peer, peer_creature);
+                                            match server::client_request(&cmd).await {
+                                                Ok(resp) => {
+                                                    if resp.trim().starts_with("ERROR") {
+                                                        app.flash_msg = Some((resp.trim().to_string(), Instant::now()));
+                                                    } else if let Ok(result) = serde_json::from_str::<crate::team::battle::BattleResult>(resp.trim()) {
+                                                        let winner = result.winner.clone();
+                                                        let loser = result.loser.clone();
+                                                        let rounds = result.rounds.len();
+                                                        if let Ok(mut ts) = app.team_state.lock() {
+                                                            ts.battle_log.push(result);
+                                                        }
+                                                        app.flash_msg = Some((
+                                                            format!("⚔️ {} defeated {} in {} rounds!", winner, loser, rounds),
+                                                            Instant::now(),
+                                                        ));
+                                                    } else {
+                                                        app.flash_msg = Some((
+                                                            format!("⚔️ Battle complete: {}", resp.trim().chars().take(60).collect::<String>()),
+                                                            Instant::now(),
+                                                        ));
+                                                    }
+                                                }
+                                                Err(e) => {
+                                                    app.flash_msg = Some((
+                                                        format!("Battle error: {e}"),
+                                                        Instant::now(),
+                                                    ));
+                                                }
+                                            }
+                                        }
+                                        (None, _) => {
+                                            app.flash_msg = Some((
+                                                "No local creatures to battle with!".to_string(),
+                                                Instant::now(),
+                                            ));
+                                        }
+                                        (_, None) => {
+                                            app.flash_msg = Some((
+                                                "No peer creature selected! Use ↑/↓ to select a peer creature.".to_string(),
+                                                Instant::now(),
+                                            ));
+                                        }
+                                    }
                                 }
                             }
                             KeyCode::Char('d') => {
