@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use super::protocol::{Message, PROTOCOL_VERSION};
+use super::protocol::{CreatureSync, Message, PROTOCOL_VERSION};
 use super::SharedTeamState;
 
 /// A connected client writer handle.
@@ -30,6 +30,36 @@ pub async fn run_team_server(
 
     let (broadcast_tx, _) = broadcast::channel::<String>(100);
     let clients: Arc<Mutex<HashMap<String, ClientWriter>>> = Arc::new(Mutex::new(HashMap::new()));
+
+    // Spawn host sync loop — broadcast host's creatures to all clients every 2s
+    let sync_clients = clients.clone();
+    let sync_ts = team_state.clone();
+    let sync_tx = broadcast_tx.clone();
+    let mut sync_shutdown = shutdown.clone();
+    tokio::spawn(async move {
+        let interval = std::time::Duration::from_secs(2);
+        loop {
+            tokio::select! {
+                _ = tokio::time::sleep(interval) => {
+                    let creatures = gather_host_creatures(&sync_ts);
+                    if !creatures.is_empty() {
+                        let sync_msg = Message::Sync { creatures };
+                        let line = sync_msg.to_line();
+                        // Write directly to all clients (broadcast_tx would send to peers via forwarder,
+                        // but host messages aren't in the broadcast channel by default)
+                        let cls = sync_clients.lock().await;
+                        for (_name, writer) in cls.iter() {
+                            let mut w = writer.lock().await;
+                            let _ = w.write_all(line.as_bytes()).await;
+                        }
+                    }
+                }
+                _ = sync_shutdown.changed() => {
+                    if *sync_shutdown.borrow() { break; }
+                }
+            }
+        }
+    });
 
     loop {
         tokio::select! {
@@ -182,4 +212,34 @@ async fn handle_peer(
 
     tracing::info!("Peer '{}' left the team", peer_name_clone);
     Ok(())
+}
+
+/// Gather the host's local creature state from the daemon.
+fn gather_host_creatures(team_state: &SharedTeamState) -> Vec<CreatureSync> {
+    let owner = team_state
+        .lock()
+        .ok()
+        .map(|ts| ts.local_name.clone())
+        .unwrap_or_default();
+
+    if let Some(daemon_state) = crate::daemon::server::get_global_state() {
+        if let Ok(st) = daemon_state.lock() {
+            return st
+                .agents
+                .iter()
+                .map(|a| CreatureSync {
+                    name: a.creature_name.clone(),
+                    species: a.creature_species.clone(),
+                    stage: a.stage,
+                    xp: a.xp,
+                    state: a.state.clone(),
+                    cpu: a.cpu_pct,
+                    project: a.working_dir.as_deref().unwrap_or("").to_string(),
+                    owner: owner.clone(),
+                })
+                .collect();
+        }
+    }
+
+    Vec::new()
 }
