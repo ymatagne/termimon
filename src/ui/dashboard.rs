@@ -414,17 +414,28 @@ pub async fn run() -> Result<()> {
                                         .and_then(|s| s.agents.iter().max_by_key(|a| a.xp))
                                         .map(|a| a.creature_name.clone());
 
-                                    // Pick selected peer and creature
+                                    // Pick selected peer and creature (exclude self)
                                     let peer_info = {
                                         let ts = app.team_state.lock().ok();
                                         ts.and_then(|ts| {
-                                            let peer_names = ts.registry.peer_names();
+                                            let local_name = &ts.local_name;
+                                            let peer_names: Vec<String> = ts.registry.peer_names()
+                                                .into_iter()
+                                                .filter(|n| n != local_name)
+                                                .collect();
                                             let peer_name = peer_names.get(app.team_selected_peer)?.clone();
                                             let peer = ts.registry.peers.get(&peer_name)?;
                                             let creature = peer.creatures.get(app.team_selected_creature)?;
                                             Some((peer_name, creature.name.clone()))
                                         })
                                     };
+
+                                    if peer_info.is_none() {
+                                        app.flash_msg = Some((
+                                            "⚠️ No peer creatures to battle — select a remote peer's creature!".to_string(),
+                                            Instant::now(),
+                                        ));
+                                    }
 
                                     match (local_creature, peer_info) {
                                         (Some(local), Some((peer, peer_creature))) => {
