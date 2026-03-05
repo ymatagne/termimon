@@ -327,14 +327,49 @@ pub async fn run() -> Result<()> {
                         match key.code {
                             KeyCode::Char('q') | KeyCode::Esc => break,
                             KeyCode::Up | KeyCode::Char('k') => {
-                                if app.selected > 0 {
+                                if app.show_team {
+                                    // Navigate team creatures
+                                    if app.team_selected_creature > 0 {
+                                        app.team_selected_creature -= 1;
+                                    } else if app.team_selected_peer > 0 {
+                                        // Move to previous peer's last creature
+                                        app.team_selected_peer -= 1;
+                                        if let Ok(ts) = app.team_state.lock() {
+                                            let peers = ts.registry.peer_names();
+                                            if let Some(name) = peers.get(app.team_selected_peer) {
+                                                if let Some(peer) = ts.registry.peers.get(name) {
+                                                    app.team_selected_creature = peer.creatures.len().saturating_sub(1);
+                                                }
+                                            }
+                                        }
+                                    }
+                                } else if app.selected > 0 {
                                     app.selected -= 1;
                                 }
                             }
                             KeyCode::Down | KeyCode::Char('j') => {
-                                let count = app.visible_agents().len();
-                                if app.selected + 1 < count {
-                                    app.selected += 1;
+                                if app.show_team {
+                                    // Navigate team creatures
+                                    let mut max_creature = 0;
+                                    if let Ok(ts) = app.team_state.lock() {
+                                        let peers = ts.registry.peer_names();
+                                        if let Some(name) = peers.get(app.team_selected_peer) {
+                                            if let Some(peer) = ts.registry.peers.get(name) {
+                                                max_creature = peer.creatures.len().saturating_sub(1);
+                                            }
+                                        }
+                                        if app.team_selected_creature < max_creature {
+                                            app.team_selected_creature += 1;
+                                        } else if app.team_selected_peer + 1 < peers.len() {
+                                            app.team_selected_peer += 1;
+                                            app.team_selected_creature = 0;
+                                        }
+                                    }
+                                } else {
+                                    let count = app.visible_agents().len();
+                                    if app.selected + 1 < count {
+                                        app.selected += 1;
+                                    }
                                 }
                             }
                             KeyCode::Enter => {
