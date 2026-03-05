@@ -195,71 +195,87 @@ async fn main() -> anyhow::Result<()> {
             stats::show_history(days)?;
         }
         Commands::Team { action } => {
-            let cfg = config::load();
+            // All team commands go through the daemon via IPC
+            let daemon_running = daemon::read_running_pid().is_some();
+
             match action {
                 TeamAction::Host { port } => {
-                    let port = port.unwrap_or(cfg.team.port);
-                    let team_state = team::new_shared_team_state(cfg.team.name.clone());
-                    team::set_global_team_state(team_state.clone());
-                    let (_shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
-                    println!("🎮 Hosting team session on port {port}...");
-                    println!("   Others can join with: termimon team join <your-ip>:{port}");
-                    team::server::run_team_server(port, team_state, shutdown_rx).await?;
+                    if !daemon_running {
+                        eprintln!("❌ Daemon is not running. Start it first: termimon start");
+                        std::process::exit(1);
+                    }
+                    let cmd = match port {
+                        Some(p) => format!("team_host {p}"),
+                        None => "team_host".to_string(),
+                    };
+                    match daemon::server::client_request(&cmd).await {
+                        Ok(resp) => println!("🎮 {}", resp.trim()),
+                        Err(e) => eprintln!("❌ Failed to send command to daemon: {e}"),
+                    }
                 }
                 TeamAction::Join { addr } => {
-                    let team_state = team::new_shared_team_state(cfg.team.name.clone());
-                    team::set_global_team_state(team_state.clone());
-                    let (_shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
-                    println!("🎮 Joining team at {addr}...");
-                    team::client::connect_to_host(&addr, team_state, shutdown_rx).await?;
+                    if !daemon_running {
+                        eprintln!("❌ Daemon is not running. Start it first: termimon start");
+                        std::process::exit(1);
+                    }
+                    match daemon::server::client_request(&format!("team_join {addr}")).await {
+                        Ok(resp) => println!("🎮 {}", resp.trim()),
+                        Err(e) => eprintln!("❌ Failed to send command to daemon: {e}"),
+                    }
                 }
                 TeamAction::Auto => {
-                    println!("🔍 Searching for TermiMon peers on local network...");
-                    match team::mdns::discover_and_connect().await {
-                        Ok(()) => {}
-                        Err(e) => {
-                            println!("⚠️  mDNS discovery not available: {e}");
-                            println!("   Falling back to manual mode.");
-                            println!("   Host:  termimon team host");
-                            println!("   Join:  termimon team join <ip:port>");
-                        }
+                    if !daemon_running {
+                        eprintln!("❌ Daemon is not running. Start it first: termimon start");
+                        std::process::exit(1);
+                    }
+                    match daemon::server::client_request("team_auto").await {
+                        Ok(resp) => println!("🔍 {}", resp.trim()),
+                        Err(e) => eprintln!("❌ Failed to send command to daemon: {e}"),
                     }
                 }
                 TeamAction::Status => {
-                    println!("🎮 Team Status");
-                    if let Some(ts) = team::get_global_team_state() {
-                        if let Ok(state) = ts.lock() {
-                            if state.hosting {
-                                println!("  Hosting on port {}", cfg.team.port);
-                            } else if state.connected {
-                                println!("  Connected to team");
-                            } else {
-                                println!("  Not connected");
-                            }
-                            let peers = state.registry.peer_names();
-                            if peers.is_empty() {
-                                println!("  No peers connected");
-                            } else {
-                                println!("  Peers: {}", peers.join(", "));
+                    if !daemon_running {
+                        println!("🎮 Team Status");
+                        println!("  Daemon is not running.");
+                        println!("  Start it with: termimon start");
+                        return Ok(());
+                    }
+                    match daemon::server::client_request("team_status").await {
+                        Ok(resp) => {
+                            match serde_json::from_str::<daemon::server::TeamStatusResponse>(resp.trim()) {
+                                Ok(status) => {
+                                    println!("🎮 Team Status");
+                                    if status.hosting {
+                                        println!("  Hosting as '{}'", status.local_name);
+                                    } else if status.connected {
+                                        println!("  Connected as '{}'", status.local_name);
+                                    } else {
+                                        println!("  Not connected");
+                                    }
+                                    if status.peers.is_empty() {
+                                        println!("  No peers connected");
+                                    } else {
+                                        println!("  Peers: {}", status.peers.join(", "));
+                                    }
+                                    if status.battle_count > 0 {
+                                        println!("  Battles: {}", status.battle_count);
+                                    }
+                                }
+                                Err(_) => println!("{}", resp.trim()),
                             }
                         }
-                    } else {
-                        println!("  Not connected to any team.");
-                        println!("  Host:  termimon team host");
-                        println!("  Join:  termimon team join <ip:port>");
+                        Err(e) => eprintln!("❌ Failed to query daemon: {e}"),
                     }
                 }
                 TeamAction::Leave => {
-                    println!("👋 Leaving team...");
-                    // Signal shutdown to team connections
-                    if let Some(ts) = team::get_global_team_state() {
-                        if let Ok(mut state) = ts.lock() {
-                            state.connected = false;
-                            state.hosting = false;
-                            state.registry.peers.clear();
-                        }
+                    if !daemon_running {
+                        println!("👋 Daemon is not running, nothing to leave.");
+                        return Ok(());
                     }
-                    println!("✅ Left team.");
+                    match daemon::server::client_request("team_leave").await {
+                        Ok(resp) => println!("👋 {}", resp.trim()),
+                        Err(e) => eprintln!("❌ Failed to send command to daemon: {e}"),
+                    }
                 }
             }
         }

@@ -216,9 +216,18 @@ async fn run_daemon() -> Result<()> {
         let _ = tx.send(true);
     });
 
+    // Initialize team state in the daemon
+    let cfg = crate::config::load();
+    let team_state = crate::team::new_shared_team_state(cfg.team.name.clone());
+    crate::team::set_global_team_state(team_state.clone());
+
+    let (team_shutdown_tx, _team_shutdown_rx) = tokio::sync::watch::channel(false);
+
     let server_shutdown = shutdown_rx.clone();
+    let ts = team_state.clone();
+    let ttx = team_shutdown_tx.clone();
     let server_handle = tokio::spawn(async move {
-        if let Err(e) = server::run_server(server_shutdown).await {
+        if let Err(e) = server::run_server(server_shutdown, ts, ttx).await {
             tracing::error!("IPC server error: {e}");
         }
     });

@@ -13,6 +13,7 @@ use std::sync::{Arc, Mutex};
 use crate::agents::TrackedAgent;
 use crate::agents::activity::ActivityEvent;
 use crate::agents::cost::AgentCostSummary;
+use crate::team::{self, SharedTeamState};
 
 /// Serializable snapshot of a tracked agent for IPC.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -155,8 +156,22 @@ pub fn get_global_state() -> Option<SharedState> {
     GLOBAL_STATE.lock().ok()?.clone()
 }
 
+/// Serializable team status for IPC responses.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct TeamStatusResponse {
+    pub hosting: bool,
+    pub connected: bool,
+    pub local_name: String,
+    pub peers: Vec<String>,
+    pub battle_count: usize,
+}
+
 /// Run the IPC server until shutdown.
-pub async fn run_server(mut shutdown: watch::Receiver<bool>) -> Result<()> {
+pub async fn run_server(
+    mut shutdown: watch::Receiver<bool>,
+    team_state: SharedTeamState,
+    team_shutdown_tx: tokio::sync::watch::Sender<bool>,
+) -> Result<()> {
     let socket_path = super::socket_path();
     let listener = UnixListener::bind(&socket_path).context("Failed to bind Unix socket")?;
     tracing::info!("IPC server listening on {}", socket_path.display());
@@ -166,14 +181,19 @@ pub async fn run_server(mut shutdown: watch::Receiver<bool>) -> Result<()> {
         *g = Some(state.clone());
     }
 
+    // Store team state globally so dashboard can read it
+    team::set_global_team_state(team_state.clone());
+
     loop {
         tokio::select! {
             accept = listener.accept() => {
                 match accept {
                     Ok((stream, _)) => {
                         let st = state.clone();
+                        let ts = team_state.clone();
+                        let ttx = team_shutdown_tx.clone();
                         tokio::spawn(async move {
-                            if let Err(e) = handle_client(stream, st).await {
+                            if let Err(e) = handle_client(stream, st, ts, ttx).await {
                                 tracing::debug!("Client error: {e}");
                             }
                         });
@@ -192,14 +212,19 @@ pub async fn run_server(mut shutdown: watch::Receiver<bool>) -> Result<()> {
     Ok(())
 }
 
-async fn handle_client(stream: tokio::net::UnixStream, state: SharedState) -> Result<()> {
+async fn handle_client(
+    stream: tokio::net::UnixStream,
+    state: SharedState,
+    team_state: SharedTeamState,
+    team_shutdown_tx: tokio::sync::watch::Sender<bool>,
+) -> Result<()> {
     let (reader, mut writer) = stream.into_split();
     let mut reader = BufReader::new(reader);
     let mut line = String::new();
     reader.read_line(&mut line).await?;
-    let command = line.trim();
+    let command = line.trim().to_string();
 
-    let response = match command {
+    let response = match command.as_str() {
         "status" | "status_json" => {
             let st = state.lock().map_err(|e| anyhow::anyhow!("lock: {e}"))?;
             let resp = StatusResponse {
@@ -229,12 +254,154 @@ async fn handle_client(stream: tokio::net::UnixStream, state: SharedState) -> Re
             serde_json::to_string_pretty(&st.agents)?
         }
         "ping" => "pong".to_string(),
+        "team_status" => {
+            let ts = team_state.lock().map_err(|e| anyhow::anyhow!("lock: {e}"))?;
+            let resp = TeamStatusResponse {
+                hosting: ts.hosting,
+                connected: ts.connected,
+                local_name: ts.local_name.clone(),
+                peers: ts.registry.peer_names(),
+                battle_count: ts.battle_log.len(),
+            };
+            serde_json::to_string(&resp)?
+        }
+        cmd if cmd.starts_with("team_host") => {
+            let port: u16 = cmd.strip_prefix("team_host")
+                .and_then(|s| s.trim().parse().ok())
+                .unwrap_or_else(|| crate::config::load().team.port);
+
+            // Check if already hosting/connected
+            let already_active = team_state.lock()
+                .map(|ts| ts.hosting || ts.connected)
+                .unwrap_or(false);
+            if already_active {
+                return write_response(&mut writer, "ERROR: Already in a team session. Leave first.").await;
+            }
+
+            let ts = team_state.clone();
+            let shutdown_rx = team_shutdown_tx.subscribe();
+            tokio::spawn(async move {
+                if let Err(e) = team::server::run_team_server(port, ts, shutdown_rx).await {
+                    tracing::error!("Team server error: {e}");
+                }
+            });
+
+            format!("OK: Hosting team on port {port}")
+        }
+        cmd if cmd.starts_with("team_join ") => {
+            let addr = cmd.strip_prefix("team_join ").unwrap().trim().to_string();
+
+            let already_active = team_state.lock()
+                .map(|ts| ts.hosting || ts.connected)
+                .unwrap_or(false);
+            if already_active {
+                return write_response(&mut writer, "ERROR: Already in a team session. Leave first.").await;
+            }
+
+            let resp = format!("OK: Joining team at {addr}");
+            let ts = team_state.clone();
+            let shutdown_rx = team_shutdown_tx.subscribe();
+            tokio::spawn(async move {
+                if let Err(e) = team::client::connect_to_host(&addr, ts, shutdown_rx).await {
+                    tracing::error!("Team client error: {e}");
+                }
+            });
+
+            resp
+        }
+        "team_leave" => {
+            // Signal team shutdown
+            let _ = team_shutdown_tx.send(true);
+
+            // Clear team state
+            if let Ok(mut ts) = team_state.lock() {
+                ts.connected = false;
+                ts.hosting = false;
+                ts.registry.peers.clear();
+            }
+
+            // Reset team shutdown channel for future use (we can't easily,
+            // but team server/client will have exited)
+            "OK: Left team".to_string()
+        }
+        "team_auto" => {
+            let ts = team_state.clone();
+            let shutdown_rx = team_shutdown_tx.subscribe();
+            tokio::spawn(async move {
+                if let Err(e) = team_auto_discover(ts, shutdown_rx).await {
+                    tracing::error!("Team auto-discover error: {e}");
+                }
+            });
+            "OK: Auto-discovery started".to_string()
+        }
         _ => format!("unknown command: {command}"),
     };
 
     writer.write_all(response.as_bytes()).await?;
     writer.write_all(b"\n").await?;
     writer.shutdown().await?;
+    Ok(())
+}
+
+async fn write_response(
+    writer: &mut tokio::net::unix::OwnedWriteHalf,
+    msg: &str,
+) -> Result<()> {
+    writer.write_all(msg.as_bytes()).await?;
+    writer.write_all(b"\n").await?;
+    writer.shutdown().await?;
+    Ok(())
+}
+
+/// Auto-discover and connect to team peers (runs in daemon context).
+async fn team_auto_discover(
+    team_state: SharedTeamState,
+    shutdown_rx: watch::Receiver<bool>,
+) -> Result<()> {
+    let cfg = crate::config::load();
+    let port = cfg.team.port;
+    let name = cfg.team.name.clone();
+
+    let socket = std::net::UdpSocket::bind("0.0.0.0:0")?;
+    socket.set_broadcast(true)?;
+    socket.set_read_timeout(Some(std::time::Duration::from_secs(5)))?;
+
+    let announce = format!("TERMIMON_DISCOVER:{}:{}", name, port);
+    socket.send_to(announce.as_bytes(), "255.255.255.255:14662")?;
+
+    let mut buf = [0u8; 1024];
+    let mut found_peers: Vec<String> = Vec::new();
+
+    loop {
+        match socket.recv_from(&mut buf) {
+            Ok((len, addr)) => {
+                let msg = String::from_utf8_lossy(&buf[..len]);
+                if msg.starts_with("TERMIMON_DISCOVER:") || msg.starts_with("TERMIMON_REPLY:") {
+                    let parts: Vec<&str> = msg.splitn(3, ':').collect();
+                    if parts.len() >= 3 {
+                        let peer_name = parts[1];
+                        let peer_port: u16 = parts[2].parse().unwrap_or(4662);
+                        if peer_name != name {
+                            let peer_addr = format!("{}:{}", addr.ip(), peer_port);
+                            found_peers.push(peer_addr);
+                            let reply = format!("TERMIMON_REPLY:{}:{}", name, port);
+                            let _ = socket.send_to(reply.as_bytes(), addr);
+                        }
+                    }
+                }
+            }
+            Err(_) => break,
+        }
+    }
+
+    if found_peers.is_empty() {
+        tracing::info!("No peers found, starting as host on port {port}");
+        team::server::run_team_server(port, team_state, shutdown_rx).await?;
+    } else {
+        tracing::info!("Found peer, connecting to {}", found_peers[0]);
+        team::client::connect_to_host(&found_peers[0], team_state, shutdown_rx).await?;
+    }
+
     Ok(())
 }
 
