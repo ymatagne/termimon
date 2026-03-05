@@ -166,11 +166,14 @@ pub struct TeamStatusResponse {
     pub battle_count: usize,
 }
 
+/// Shared handle for the team shutdown sender so IPC handlers can signal team tasks.
+type SharedTeamShutdown = Arc<watch::Sender<bool>>;
+
 /// Run the IPC server until shutdown.
 pub async fn run_server(
     mut shutdown: watch::Receiver<bool>,
     team_state: SharedTeamState,
-    team_shutdown_tx: tokio::sync::watch::Sender<bool>,
+    team_shutdown_tx: watch::Sender<bool>,
 ) -> Result<()> {
     let socket_path = super::socket_path();
     let listener = UnixListener::bind(&socket_path).context("Failed to bind Unix socket")?;
@@ -184,6 +187,8 @@ pub async fn run_server(
     // Store team state globally so dashboard can read it
     team::set_global_team_state(team_state.clone());
 
+    let team_shutdown = Arc::new(team_shutdown_tx);
+
     loop {
         tokio::select! {
             accept = listener.accept() => {
@@ -191,7 +196,7 @@ pub async fn run_server(
                     Ok((stream, _)) => {
                         let st = state.clone();
                         let ts = team_state.clone();
-                        let ttx = team_shutdown_tx.clone();
+                        let ttx = team_shutdown.clone();
                         tokio::spawn(async move {
                             if let Err(e) = handle_client(stream, st, ts, ttx).await {
                                 tracing::debug!("Client error: {e}");
@@ -216,7 +221,7 @@ async fn handle_client(
     stream: tokio::net::UnixStream,
     state: SharedState,
     team_state: SharedTeamState,
-    team_shutdown_tx: tokio::sync::watch::Sender<bool>,
+    team_shutdown_tx: SharedTeamShutdown,
 ) -> Result<()> {
     let (reader, mut writer) = stream.into_split();
     let mut reader = BufReader::new(reader);

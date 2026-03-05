@@ -87,6 +87,8 @@ struct DashApp {
     team_selected_peer: usize,
     /// Selected creature index within peer.
     team_selected_creature: usize,
+    /// Local team state populated from daemon IPC.
+    team_state: crate::team::SharedTeamState,
     /// Active theme.
     theme: &'static crate::theme::Theme,
 }
@@ -110,6 +112,7 @@ impl DashApp {
             show_team: false,
             team_selected_peer: 0,
             team_selected_creature: 0,
+            team_state: crate::team::new_shared_team_state(String::new()),
             theme,
         }
     }
@@ -182,6 +185,28 @@ impl DashApp {
                 self.error_msg = Some(format!("Cannot connect to daemon: {e}"));
             }
         }
+        // Refresh team state from daemon
+        if let Ok(resp) = server::client_request("team_status").await {
+            if let Ok(ts) = serde_json::from_str::<server::TeamStatusResponse>(resp.trim()) {
+                if let Ok(mut state) = self.team_state.lock() {
+                    state.local_name = ts.local_name;
+                    state.hosting = ts.hosting;
+                    state.connected = ts.connected;
+                    // Sync peer names (add new, remove gone)
+                    let current_peers: std::collections::HashSet<String> =
+                        state.registry.peer_names().into_iter().collect();
+                    let new_peers: std::collections::HashSet<String> =
+                        ts.peers.iter().cloned().collect();
+                    for gone in current_peers.difference(&new_peers) {
+                        state.registry.remove_peer(gone);
+                    }
+                    for added in new_peers.difference(&current_peers) {
+                        state.registry.add_peer(added.clone());
+                    }
+                }
+            }
+        }
+
         self.last_refresh = Instant::now();
     }
 
@@ -464,25 +489,7 @@ fn draw_dashboard(frame: &mut Frame, app: &DashApp) {
             area.height.saturating_sub(6),
         );
         frame.render_widget(Clear, team_area);
-        if let Some(ts) = crate::team::get_global_team_state() {
-            crate::ui::team_view::draw_team_view(frame, team_area, &ts, app.team_selected_peer, app.team_selected_creature);
-        } else {
-            // No team state — show placeholder
-            let placeholder = Paragraph::new(vec![
-                Line::from(""),
-                Line::from(Span::styled("  ⚔️ Team Mode", Style::default().fg(app.theme.accent).add_modifier(Modifier::BOLD))),
-                Line::from(""),
-                Line::from(Span::styled("  Not connected to any team.", Style::default().fg(app.theme.muted))),
-                Line::from(""),
-                Line::from(Span::styled("  Host:  termimon team host", Style::default().fg(app.theme.highlight))),
-                Line::from(Span::styled("  Join:  termimon team join <ip:port>", Style::default().fg(app.theme.highlight))),
-            ])
-            .block(Block::default()
-                .borders(Borders::ALL)
-                .border_style(Style::default().fg(app.theme.accent))
-                .title(" ⚔️ TEAM MODE "));
-            frame.render_widget(placeholder, team_area);
-        }
+        crate::ui::team_view::draw_team_view(frame, team_area, &app.team_state, app.team_selected_peer, app.team_selected_creature);
     }
 
     // Help overlay
